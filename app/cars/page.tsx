@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { CarCard } from "@/components/car-card"
@@ -12,6 +12,8 @@ import { Search, Sparkles } from "lucide-react"
 import { AISearchBar } from "@/components/ai-search-bar"
 import { AIRecommendations } from "@/components/ai-recommendations"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { motion, AnimatePresence } from "framer-motion"
+import Link from "next/link"
 
 export default function CarsPage() {
   const { cars } = useCarsStore()
@@ -20,11 +22,13 @@ export default function CarsPage() {
   const [aiFilteredIds, setAiFilteredIds] = useState<string[] | null>(null)
   const [aiExplanation, setAiExplanation] = useState("")
 
+  // small animated counter for results
+  const [animatedCount, setAnimatedCount] = useState(0)
   const filteredCars = useMemo(() => {
     let carsToFilter = cars
 
     if (aiFilteredIds && aiFilteredIds.length > 0) {
-      carsToFilter = cars.filter((car) => aiFilteredIds.includes(car.id))
+      carsToFilter = cars.filter((car) => aiFilteredIds.includes(car.carId ?? car.carId))
     }
 
     return carsToFilter.filter((car) => {
@@ -32,9 +36,9 @@ export default function CarsPage() {
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
         const matchesSearch =
-          car.make.toLowerCase().includes(query) ||
-          car.model.toLowerCase().includes(query) ||
-          car.location.toLowerCase().includes(query)
+          (car.make && car.make.toLowerCase().includes(query)) ||
+          (car.carModel && car.carModel.toLowerCase().includes(query)) ||
+          (car.location && car.location.toLowerCase().includes(query))
         if (!matchesSearch) return false
       }
 
@@ -66,6 +70,30 @@ export default function CarsPage() {
     })
   }, [cars, filters, searchQuery, aiFilteredIds])
 
+  // animate result count when filteredCars changes
+  useEffect(() => {
+    let raf: number | null = null
+    const start = animatedCount
+    const end = filteredCars.length
+    const duration = 400
+    const startTime = performance.now()
+
+    const step = (now: number) => {
+      const t = Math.min(1, (now - startTime) / duration)
+      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t // simple ease
+      const value = Math.round(start + (end - start) * eased)
+      setAnimatedCount(value)
+      if (t < 1) raf = requestAnimationFrame(step)
+      else raf = null
+    }
+
+    raf = requestAnimationFrame(step)
+    return () => {
+      if (raf) cancelAnimationFrame(raf)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredCars.length])
+
   const handleAISearchResults = (carIds: string[], explanation: string) => {
     setAiFilteredIds(carIds)
     setAiExplanation(explanation)
@@ -77,14 +105,29 @@ export default function CarsPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
 
       <main className="flex-1">
         <div className="container px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Browse Our Fleet</h1>
-            <p className="text-muted-foreground">Find the perfect vehicle for your journey</p>
+            <motion.h1
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
+              className="text-3xl font-bold mb-2"
+            >
+              Browse Our Fleet
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.05, duration: 0.45 }}
+              className="text-muted-foreground"
+            >
+              Find the perfect vehicle for your journey
+            </motion.p>
           </div>
 
           <div className="mb-6">
@@ -99,16 +142,34 @@ export default function CarsPage() {
                   Traditional Search
                 </TabsTrigger>
               </TabsList>
+
               <TabsContent value="ai">
-                <AISearchBar onResults={handleAISearchResults} />
-                {aiFilteredIds && (
-                  <button onClick={clearAIFilter} className="mt-2 text-sm text-primary hover:underline">
-                    Clear AI filter and show all cars
-                  </button>
-                )}
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <AISearchBar onResults={handleAISearchResults} />
+                  {aiFilteredIds && (
+                    <div className="mt-2 flex items-center gap-3 text-sm">
+                      <button onClick={clearAIFilter} className="text-primary hover:underline">
+                        Clear AI filter
+                      </button>
+                      {aiExplanation && (
+                        <span className="text-muted-foreground">• {aiExplanation}</span>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
               </TabsContent>
+
               <TabsContent value="traditional">
-                <div className="relative max-w-md">
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="relative max-w-md"
+                >
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by make, model, or location..."
@@ -116,37 +177,111 @@ export default function CarsPage() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
                   />
-                </div>
+                </motion.div>
               </TabsContent>
             </Tabs>
           </div>
 
-          <div className="grid lg:grid-cols-[280px_1fr] gap-8">
+          <div className="grid lg:grid-cols-[300px_1fr] gap-8">
             {/* Filters */}
-            <aside className="space-y-6">
-              <CarFiltersComponent filters={filters} onFiltersChange={setFilters} />
-              <AIRecommendations />
+            <aside>
+              <motion.div
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.45 }}
+                className="space-y-6 sticky top-20"
+              >
+                <CarFiltersComponent filters={filters} onFiltersChange={setFilters} />
+                <AIRecommendations />
+              </motion.div>
             </aside>
 
             {/* Car Grid */}
             <div>
+              <div className="mb-3 flex items-center justify-between">
+                <motion.div
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.45 }}
+                  className="text-sm text-muted-foreground"
+                >
+                  <span className="font-medium text-gray-900 dark:text-white">{animatedCount}</span>{" "}
+                  car{filteredCars.length !== 1 ? "s" : ""} found {aiFilteredIds && <span className="text-primary">• AI filtered</span>}
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}>
+                  {aiFilteredIds ? (
+                    <div className="text-xs text-muted-foreground">
+                      Showing AI suggestions — <button onClick={clearAIFilter} className="text-primary hover:underline ml-1">Clear</button>
+                    </div>
+                  ) : null}
+                </motion.div>
+              </div>
+
               {filteredCars.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-lg text-muted-foreground">No cars found matching your criteria.</p>
-                  <p className="text-sm text-muted-foreground mt-2">Try adjusting your filters or use AI search.</p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {filteredCars.length} car{filteredCars.length !== 1 ? "s" : ""} found
-                    {aiFilteredIds && " (AI filtered)"}
-                  </p>
-                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredCars.map((car) => (
-                      <CarCard key={car.id} car={car} />
-                    ))}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.35 }}
+                  className="text-center py-20"
+                >
+                  <div className="mx-auto max-w-md">
+                    <svg className="mx-auto mb-6 w-32 h-32 opacity-60" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="80" height="80" rx="12" fill="currentColor" opacity="0.06" />
+                      <path d="M20 50 L30 30 L40 50 L50 20" stroke="currentColor" strokeWidth="2.5" opacity="0.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+
+                    <h3 className="text-xl font-semibold mb-2">No cars match your criteria</h3>
+                    <p className="text-muted-foreground mb-6">Try adjusting filters, clearing the AI search, or broaden your search terms.</p>
+                    <div className="flex items-center justify-center gap-3">
+                      <Link href="/cars" className="btn inline-flex items-center gap-2 text-primary hover:underline">
+                        Clear Filters
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setFilters({})
+                          setSearchQuery("")
+                          clearAIFilter()
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md border text-sm"
+                      >
+                        Reset
+                      </button>
+                    </div>
                   </div>
-                </>
+                </motion.div>
+              ) : (
+                <motion.div
+                  layout
+                  initial="hidden"
+                  animate="show"
+                  exit="hidden"
+                  variants={{
+                    hidden: {},
+                    show: { transition: { staggerChildren: 0.06 } },
+                  }}
+                >
+                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <AnimatePresence initial={false}>
+                      {filteredCars.map((car) => {
+                        const key = (car as any).id ?? (car as any).carId
+                        return (
+                          <motion.div
+                            key={key}
+                            layout
+                            initial={{ opacity: 0, y: 8, scale: 0.995 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -8, scale: 0.995 }}
+                            whileHover={{ scale: 1.02 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                          >
+                            <CarCard car={car} />
+                          </motion.div>
+                        )
+                      })}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
               )}
             </div>
           </div>

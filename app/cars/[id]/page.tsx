@@ -1,37 +1,51 @@
-"use client"
+"use client";
 
-import { use, useState, useMemo } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
-import { ImageGallery } from "@/components/image-gallery"
-import { BookingCalendar } from "@/components/booking-calendar"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { useCarsStore, useBookingsStore, useAuthStore } from "@/lib/store"
-import { useToast } from "@/hooks/use-toast"
-import type { DateRange } from "react-day-picker"
-import { MapPin, Users, Settings2, Fuel, Calendar, Check, ArrowLeft, Loader2 } from "lucide-react"
+import { use, useState, useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
+import { ImageGallery } from "@/components/image-gallery";
+import { BookingCalendar } from "@/components/booking-calendar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { useCarsStore, useBookingsStore, useAuthStore } from "@/lib/store";
+import { useToast } from "@/hooks/use-toast";
+import type { DateRange } from "react-day-picker";
+import {
+  MapPin,
+  Users,
+  Settings2,
+  Fuel,
+  Calendar,
+  Check,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
+import { BookingPayload } from "@/models/Booking";
 
-export default function CarDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const router = useRouter()
-  const { cars } = useCarsStore()
-  const { bookings, addBooking } = useBookingsStore()
-  const { user, isAuthenticated } = useAuthStore()
-  const { toast } = useToast()
+export default function CarDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const router = useRouter();
+  const { cars } = useCarsStore();
+  const { bookings, addBooking } = useBookingsStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const { toast } = useToast();
 
-  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>()
-  const [isBooking, setIsBooking] = useState(false)
+  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>();
+  const [isBooking, setIsBooking] = useState(false);
 
-  const car = cars.find((c) => c.id === id)
+  const car = cars.find((c) => c.carId === id);
 
   const carBookings = useMemo(() => {
-    return bookings.filter((b) => b.carId === id)
-  }, [bookings, id])
+    return bookings.filter((b) => b.carId === id);
+  }, [bookings, id]);
 
   if (!car) {
     return (
@@ -47,14 +61,17 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
         </main>
         <Footer />
       </div>
-    )
+    );
   }
 
   const calculateTotal = () => {
-    if (!selectedRange?.from || !selectedRange?.to) return 0
-    const days = Math.ceil((selectedRange.to.getTime() - selectedRange.from.getTime()) / (1000 * 60 * 60 * 24))
-    return days * car.pricePerDay
-  }
+    if (!selectedRange?.from || !selectedRange?.to) return 0;
+    const days = Math.ceil(
+      (selectedRange.to.getTime() - selectedRange.from.getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+    return days * car.pricePerDay;
+  };
 
   const handleBooking = async () => {
     if (!isAuthenticated) {
@@ -62,9 +79,9 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
         title: "Please log in",
         description: "You need to be logged in to book a car.",
         variant: "destructive",
-      })
-      router.push("/login")
-      return
+      });
+      router.push("/login");
+      return;
     }
 
     if (!selectedRange?.from || !selectedRange?.to) {
@@ -72,39 +89,41 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
         title: "Select dates",
         description: "Please select your rental dates.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsBooking(true)
+    setIsBooking(true);
 
     try {
-      const bookingId = addBooking({
-        userId: user!.id,
-        carId: car.id,
+      const bookingId = await addBooking({
+        userId: user!.userId,
+        carId: car.carId,
         startDate: selectedRange.from,
         endDate: selectedRange.to,
         totalAmount: calculateTotal(),
         paymentStatus: "pending",
         bookingStatus: "pending_payment",
-      })
+      } as BookingPayload);
 
       toast({
         title: "Booking created!",
         description: "Redirecting to payment...",
-      })
+      });
 
-      router.push(`/payment/${bookingId}`)
+      console.log(bookingId);
+
+      router.push(`/payment/${bookingId}`);
     } catch {
       toast({
         title: "Booking failed",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsBooking(false)
+      setIsBooking(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -123,18 +142,23 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
           <div className="grid lg:grid-cols-[1fr_400px] gap-8">
             {/* Left Column - Car Details */}
             <div className="space-y-6">
-              <ImageGallery images={car.images} alt={`${car.make} ${car.model}`} />
+              <ImageGallery
+                images={car.images}
+                alt={`${car.make} ${car.model}`}
+              />
 
               <div>
                 <div className="flex items-start justify-between flex-wrap gap-4">
                   <div>
                     <h1 className="text-3xl font-bold">
-                      {car.make} {car.model}
+                      {car.make} {car.carModel}
                     </h1>
                     <p className="text-lg text-muted-foreground">{car.year}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-primary">${car.pricePerDay}</p>
+                    <p className="text-3xl font-bold text-primary">
+                      ${car.pricePerDay}
+                    </p>
                     <p className="text-sm text-muted-foreground">per day</p>
                   </div>
                 </div>
@@ -157,8 +181,12 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
                   <CardContent className="flex items-center gap-3 p-4">
                     <Settings2 className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Transmission</p>
-                      <p className="font-semibold capitalize">{car.transmission}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Transmission
+                      </p>
+                      <p className="font-semibold capitalize">
+                        {car.transmission}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -202,7 +230,11 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {car.features.map((feature, index) => (
-                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
                         <Check className="h-3 w-3" />
                         {feature}
                       </Badge>
@@ -224,7 +256,12 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
               <Button
                 className="w-full"
                 size="lg"
-                disabled={!selectedRange?.from || !selectedRange?.to || isBooking || car.status !== "active"}
+                disabled={
+                  !selectedRange?.from ||
+                  !selectedRange?.to ||
+                  isBooking ||
+                  car.status !== "active"
+                }
                 onClick={handleBooking}
               >
                 {isBooking ? (
@@ -252,5 +289,5 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
 
       <Footer />
     </div>
-  )
+  );
 }

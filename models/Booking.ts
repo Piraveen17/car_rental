@@ -25,6 +25,17 @@ export interface IBooking extends Document {
   updatedAt: Date;
 }
 
+export type BookingPayload = {
+  userId: String;
+  carId: String;
+  startDate: Date;
+  endDate: Date;
+  totalAmount: Number;
+  invoiceUrl?: string;
+  paymentStatus: String;
+  bookingStatus: String;
+};
+
 const BookingSchema: Schema<IBooking> = new Schema(
   {
     bookingId: { type: String, required: true },

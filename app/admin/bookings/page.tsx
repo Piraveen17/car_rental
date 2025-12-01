@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useBookingsStore, useCarsStore } from "@/lib/store";
 import { users } from "@/lib/data";
-import type { BookingStatus } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Search, Download, FileText } from "lucide-react";
+import { BookingPayload, BookingStatus } from "@/models/Booking";
 
 const statusConfig: Record<BookingStatus, { label: string; color: string }> = {
   pending_payment: {
@@ -50,15 +50,20 @@ const statusConfig: Record<BookingStatus, { label: string; color: string }> = {
 };
 
 export default function AdminBookingsPage() {
-  const { bookings, updateBooking } = useBookingsStore();
-  const { cars } = useCarsStore();
+  const { bookings, fetchBookings, updateBooking } = useBookingsStore();
+  const { cars, fetchCars } = useCarsStore();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  useEffect(() => {
+    fetchBookings();
+    fetchCars();
+  }, [fetchBookings, fetchCars]);
+
   const filteredBookings = bookings
     .filter((booking) => {
-      const car = cars.find((c) => c.id === booking.carId);
+      const car = cars.find((c) => c.carId === booking.carId);
       const customer = users.find((u) => u.id === booking.userId);
       const query = searchQuery.toLowerCase();
 
@@ -67,7 +72,7 @@ export default function AdminBookingsPage() {
         car?.carModel.toLowerCase().includes(query) ||
         customer?.name.toLowerCase().includes(query) ||
         customer?.email.toLowerCase().includes(query) ||
-        booking.id.toLowerCase().includes(query);
+        booking.bookingId.toLowerCase().includes(query);
 
       const matchesStatus =
         statusFilter === "all" || booking.bookingStatus === statusFilter;
@@ -80,7 +85,15 @@ export default function AdminBookingsPage() {
     );
 
   const handleStatusChange = (bookingId: string, newStatus: BookingStatus) => {
-    updateBooking(bookingId, { bookingStatus: newStatus });
+    const booking = bookings.find((b) => b.bookingId === bookingId);
+    if (!booking) return;
+
+    const updatedBooking: BookingPayload = {
+      ...booking,
+      bookingStatus: newStatus,
+    };
+
+    updateBooking(bookingId, updatedBooking);
     toast({
       title: "Status updated",
       description: `Booking status changed to ${statusConfig[newStatus].label}`,
@@ -99,10 +112,10 @@ export default function AdminBookingsPage() {
       "Payment",
     ];
     const rows = filteredBookings.map((booking) => {
-      const car = cars.find((c) => c.id === booking.carId);
+      const car = cars.find((c) => c.carId === booking.carId);
       const customer = users.find((u) => u.id === booking.userId);
       return [
-        booking.id,
+        booking.bookingId,
         customer?.name || "Unknown",
         `${car?.make} ${car?.carModel}`,
         format(new Date(booking.startDate), "yyyy-MM-dd"),
@@ -192,13 +205,13 @@ export default function AdminBookingsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBookings.map((booking) => {
-                  const car = cars.find((c) => c.id === booking.carId);
+                {filteredBookings.map((booking, index) => {
+                  const car = cars.find((c) => c.carId === booking.carId);
                   const customer = users.find((u) => u.id === booking.userId);
                   const status = statusConfig[booking.bookingStatus];
 
                   return (
-                    <TableRow key={booking.id}>
+                    <TableRow key={booking.bookingId}>
                       <TableCell>
                         <div>
                           <p className="font-medium">{customer?.name}</p>
@@ -234,7 +247,7 @@ export default function AdminBookingsPage() {
                           <Select
                             value={booking.bookingStatus}
                             onValueChange={(value: BookingStatus) =>
-                              handleStatusChange(booking.id, value)
+                              handleStatusChange(booking.bookingId, value)
                             }
                           >
                             <SelectTrigger className="w-32">

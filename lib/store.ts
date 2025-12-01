@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import { users } from "./data"; // local seed user array (assumed to use `id` field)
 import type { IUser } from "@/models/User";
 import type { CarPayload, ICar } from "@/models/Car";
-import type { IBooking } from "@/models/Booking";
+import type { BookingPayload, IBooking } from "@/models/Booking";
 import type { IMaintenance } from "@/models/Maintenance";
 import type { DemoPayment, MaintenancePayload } from "@/types";
 
@@ -38,10 +38,8 @@ interface CarsState {
 interface BookingsState {
   bookings: IBooking[];
   fetchBookings: () => Promise<void>;
-  addBooking: (
-    booking: Omit<IBooking, "id" | "createdAt" | "updatedAt">
-  ) => Promise<string>;
-  updateBooking: (id: string, updates: Partial<IBooking>) => Promise<void>;
+  addBooking: (booking: BookingPayload) => Promise<string>;
+  updateBooking: (id: string, updates: BookingPayload) => Promise<void>;
   getBookingsForUser: (userId: string) => IBooking[];
 }
 

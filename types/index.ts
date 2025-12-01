@@ -26,7 +26,7 @@ export interface CarFilters {
   carModel?: string;
   minYear?: number;
   maxYear?: number;
-  transmission?: TransmissionType;
+  transmission?: TransmissionType | "all";
   minSeats?: number;
   maxSeats?: number;
   minPrice?: number;

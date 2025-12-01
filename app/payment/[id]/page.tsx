@@ -1,38 +1,69 @@
-"use client"
+"use client";
 
-import { use, useState, useEffect } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { useBookingsStore, useCarsStore, usePaymentsStore, useAuthStore } from "@/lib/store"
-import { useToast } from "@/hooks/use-toast"
-import { format } from "date-fns"
-import { Car, Calendar, CreditCard, CheckCircle2, Loader2, ShieldCheck, ArrowLeft } from "lucide-react"
+import { use, useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  useBookingsStore,
+  useCarsStore,
+  usePaymentsStore,
+  useAuthStore,
+} from "@/lib/store";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import {
+  Car,
+  Calendar,
+  CreditCard,
+  CheckCircle2,
+  Loader2,
+  ShieldCheck,
+  ArrowLeft,
+} from "lucide-react";
+import { BookingPayload } from "@/models/Booking";
 
-export default function PaymentPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const router = useRouter()
-  const { bookings, updateBooking } = useBookingsStore()
-  const { cars } = useCarsStore()
-  const { initiatePayment, completePayment } = usePaymentsStore()
-  const { user, isAuthenticated } = useAuthStore()
-  const { toast } = useToast()
 
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [paymentComplete, setPaymentComplete] = useState(false)
+export default function PaymentPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const router = useRouter();
+  const { bookings, fetchBookings, updateBooking } = useBookingsStore();
+  const { cars, fetchCars } = useCarsStore();
+  const { initiatePayment, completePayment } = usePaymentsStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const { toast } = useToast();
 
-  const booking = bookings.find((b) => b.id === id)
-  const car = booking ? cars.find((c) => c.id === booking.carId) : null
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentComplete, setPaymentComplete] = useState(false);
+
+  useEffect(() => {
+    fetchBookings();
+    fetchCars();
+  }, [fetchBookings,fetchCars]);
+  console.log(bookings);
+
+  const booking = bookings.find((b) => b.bookingId === id);
+  const car = booking ? cars.find((c) => c.carId === booking.carId) : null;
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push("/login")
+      router.push("/login");
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, router]);
 
   if (!booking || !car) {
     return (
@@ -48,7 +79,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
         </main>
         <Footer />
       </div>
-    )
+    );
   }
 
   if (booking.paymentStatus === "paid") {
@@ -59,8 +90,12 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
           <Card className="w-full max-w-md text-center">
             <CardContent className="pt-6">
               <CheckCircle2 className="h-16 w-16 text-success mx-auto mb-4" />
-              <h1 className="text-2xl font-bold mb-2">Payment Already Complete</h1>
-              <p className="text-muted-foreground mb-6">This booking has already been paid for.</p>
+              <h1 className="text-2xl font-bold mb-2">
+                Payment Already Complete
+              </h1>
+              <p className="text-muted-foreground mb-6">
+                This booking has already been paid for.
+              </p>
               <Button asChild>
                 <Link href="/dashboard">View My Bookings</Link>
               </Button>
@@ -69,47 +104,53 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
         </main>
         <Footer />
       </div>
-    )
+    );
   }
 
   const handlePayment = async () => {
-    setIsProcessing(true)
+    setIsProcessing(true);
 
     // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     try {
-      const paymentId = initiatePayment(booking.id, booking.totalAmount)
+      const paymentId = await initiatePayment(
+        booking.bookingId,
+        booking.totalAmount
+      );
 
       // Simulate payment completion
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      const success = completePayment(paymentId)
+      const success = await completePayment(paymentId);
+
+      const updatedBooking: BookingPayload = {
+        ...booking,
+        paymentStatus: "paid",
+        bookingStatus: "confirmed",
+        invoiceUrl: `/invoices/invoice-${booking.bookingId}.pdf`,
+      };
 
       if (success) {
-        updateBooking(booking.id, {
-          paymentStatus: "paid",
-          bookingStatus: "confirmed",
-          invoiceUrl: `/invoices/invoice-${booking.id}.pdf`,
-        })
+        updateBooking(booking.bookingId, updatedBooking);
 
-        setPaymentComplete(true)
+        setPaymentComplete(true);
 
         toast({
           title: "Payment Successful!",
           description: "Your booking has been confirmed.",
-        })
+        });
       }
     } catch {
       toast({
         title: "Payment Failed",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   if (paymentComplete) {
     return (
@@ -124,13 +165,13 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
               <div>
                 <h1 className="text-2xl font-bold mb-2">Payment Successful!</h1>
                 <p className="text-muted-foreground">
-                  Your booking for {car.make} {car.model} has been confirmed.
+                  Your booking for {car.make} {car.carModel} has been confirmed.
                 </p>
               </div>
               <div className="bg-muted rounded-lg p-4 text-left space-y-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Booking ID:</span>
-                  <span className="font-mono">{booking.id}</span>
+                  <span className="font-mono">{booking.bookingId}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Pick-up:</span>
@@ -142,7 +183,9 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Paid:</span>
-                  <span className="font-bold text-primary">${booking.totalAmount}</span>
+                  <span className="font-bold text-primary">
+                    ${booking.totalAmount}
+                  </span>
                 </div>
               </div>
               <div className="flex flex-col gap-2">
@@ -158,12 +201,14 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
         </main>
         <Footer />
       </div>
-    )
+    );
   }
 
   const days = Math.ceil(
-    (new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime()) / (1000 * 60 * 60 * 24),
-  )
+    (new Date(booking.endDate).getTime() -
+      new Date(booking.startDate).getTime()) /
+      (1000 * 60 * 60 * 24)
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -172,7 +217,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       <main className="flex-1">
         <div className="container px-4 py-8 max-w-4xl">
           <Button variant="ghost" asChild className="mb-6">
-            <Link href={`/cars/${car.id}`}>
+            <Link href={`/cars/${car.carId}`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Car Details
             </Link>
@@ -193,7 +238,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
                     </div>
                     <div>
                       <h3 className="font-semibold">
-                        {car.make} {car.model}
+                        {car.make} {car.carModel}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {car.year} • {car.transmission}
@@ -207,15 +252,23 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
                     <div className="flex items-center gap-3">
                       <Calendar className="h-5 w-5 text-muted-foreground" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Pick-up Date</p>
-                        <p className="font-medium">{format(new Date(booking.startDate), "PPP")}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Pick-up Date
+                        </p>
+                        <p className="font-medium">
+                          {format(new Date(booking.startDate), "PPP")}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <Calendar className="h-5 w-5 text-muted-foreground" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Drop-off Date</p>
-                        <p className="font-medium">{format(new Date(booking.endDate), "PPP")}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Drop-off Date
+                        </p>
+                        <p className="font-medium">
+                          {format(new Date(booking.endDate), "PPP")}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -236,7 +289,9 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
                     <Separator />
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total</span>
-                      <span className="text-primary">${booking.totalAmount}</span>
+                      <span className="text-primary">
+                        ${booking.totalAmount}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -251,13 +306,15 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
                     <CreditCard className="h-5 w-5" />
                     Demo Payment
                   </CardTitle>
-                  <CardDescription>This is a demo payment - no real money will be charged</CardDescription>
+                  <CardDescription>
+                    This is a demo payment - no real money will be charged
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="bg-muted/50 rounded-lg p-4 border border-dashed">
                     <p className="text-sm text-center text-muted-foreground">
-                      In a production environment, this would be a real payment form with Stripe or another payment
-                      provider.
+                      In a production environment, this would be a real payment
+                      form with Stripe or another payment provider.
                     </p>
                   </div>
 
@@ -266,7 +323,12 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
                     <span>Secure payment processing</span>
                   </div>
 
-                  <Button className="w-full" size="lg" onClick={handlePayment} disabled={isProcessing}>
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={handlePayment}
+                    disabled={isProcessing}
+                  >
                     {isProcessing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -278,7 +340,8 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
                   </Button>
 
                   <p className="text-xs text-center text-muted-foreground">
-                    By clicking Pay, you agree to our Terms of Service and Privacy Policy
+                    By clicking Pay, you agree to our Terms of Service and
+                    Privacy Policy
                   </p>
                 </CardContent>
               </Card>
@@ -289,5 +352,5 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
 
       <Footer />
     </div>
-  )
+  );
 }

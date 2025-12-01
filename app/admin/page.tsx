@@ -1,40 +1,72 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useCarsStore, useBookingsStore, useMaintenanceStore } from "@/lib/store"
-import { users } from "@/lib/data"
-import { Car, Calendar, Users, DollarSign, TrendingUp, Wrench, AlertCircle } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  useCarsStore,
+  useBookingsStore,
+  useMaintenanceStore,
+} from "@/lib/store";
+import { users } from "@/lib/data";
+import {
+  Car,
+  Calendar,
+  Users,
+  DollarSign,
+  TrendingUp,
+  Wrench,
+  AlertCircle,
+} from "lucide-react";
 
 export default function AdminDashboardPage() {
-  const { cars } = useCarsStore()
-  const { bookings } = useBookingsStore()
-  const { records: maintenanceRecords } = useMaintenanceStore()
+  const { cars } = useCarsStore();
+  const { bookings } = useBookingsStore();
+  const { records: maintenanceRecords } = useMaintenanceStore();
 
-  const totalRevenue = bookings.filter((b) => b.paymentStatus === "paid").reduce((sum, b) => sum + b.totalAmount, 0)
+  const totalRevenue = bookings
+    .filter((b) => b.paymentStatus === "paid")
+    .reduce((sum, b) => sum + b.totalAmount, 0);
 
   const activeBookings = bookings.filter(
-    (b) => b.bookingStatus === "confirmed" && new Date(b.endDate) >= new Date(),
-  ).length
+    (b) => b.bookingStatus === "confirmed" && new Date(b.endDate) >= new Date()
+  ).length;
 
-  const pendingBookings = bookings.filter((b) => b.bookingStatus === "pending_payment").length
+  const pendingBookings = bookings.filter(
+    (b) => b.bookingStatus === "pending_payment"
+  ).length;
 
-  const activeCars = cars.filter((c) => c.status === "active").length
-  const maintenanceCars = cars.filter((c) => c.status === "maintenance").length
+  const activeCars = cars.filter((c) => c.status === "active").length;
+  const maintenanceCars = cars.filter((c) => c.status === "maintenance").length;
 
-  const totalCustomers = users.filter((u) => u.role === "customer").length
+  const totalCustomers = users.filter((u) => u.role === "customer").length;
 
-  const pendingMaintenance = maintenanceRecords.filter((m) => m.status === "pending").length
-  const maintenanceCosts = maintenanceRecords.reduce((sum, m) => sum + m.cost, 0)
+  const pendingMaintenance = maintenanceRecords.filter(
+    (m) => m.status === "pending"
+  ).length;
+  const maintenanceCosts = maintenanceRecords.reduce(
+    (sum, m) => sum + m.cost,
+    0
+  );
 
   const recentBookings = bookings
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5)
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your car rental business</p>
+        <p className="text-muted-foreground">
+          Overview of your car rental business
+        </p>
       </div>
 
       {/* Stats Grid */}
@@ -44,7 +76,9 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold">${totalRevenue.toLocaleString()}</p>
+                <p className="text-2xl font-bold">
+                  ${totalRevenue.toLocaleString()}
+                </p>
               </div>
               <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
                 <DollarSign className="h-6 w-6 text-success" />
@@ -130,11 +164,17 @@ export default function AdminDashboardPage() {
                 <span className="font-semibold">{pendingMaintenance}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Total Maintenance Cost</span>
-                <span className="font-semibold">${maintenanceCosts.toLocaleString()}</span>
+                <span className="text-muted-foreground">
+                  Total Maintenance Cost
+                </span>
+                <span className="font-semibold">
+                  ${maintenanceCosts.toLocaleString()}
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Cars in Maintenance</span>
+                <span className="text-muted-foreground">
+                  Cars in Maintenance
+                </span>
                 <span className="font-semibold">{maintenanceCars}</span>
               </div>
             </div>
@@ -148,30 +188,39 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentBookings.map((booking) => {
-                const car = cars.find((c) => c.id === booking.carId)
-                const customer = users.find((u) => u.id === booking.userId)
+              {recentBookings.map((booking, index) => {
+                const car = cars.find((c) => c.carId === booking.carId);
+                const customer = users.find((u) => u.id === booking.userId);
                 return (
-                  <div key={booking.id} className="flex items-center justify-between text-sm">
+                  <div
+                    key={booking.bookingId}
+                    className="flex items-center justify-between text-sm"
+                  >
                     <div>
                       <p className="font-medium">
-                        {car?.make} {car?.model}
+                        {car?.make} {car?.carModel}
                       </p>
                       <p className="text-muted-foreground">{customer?.name}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-medium">${booking.totalAmount}</p>
-                      <p className={`text-xs ${booking.paymentStatus === "paid" ? "text-success" : "text-warning"}`}>
+                      <p
+                        className={`text-xs ${
+                          booking.paymentStatus === "paid"
+                            ? "text-success"
+                            : "text-warning"
+                        }`}
+                      >
                         {booking.paymentStatus}
                       </p>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

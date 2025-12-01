@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import Booking from "@/models/Booking";
 import connectToDatabase from "@/lib/mongoose";
+import { id } from "date-fns/locale";
 
 export async function GET(
   _req: Request,
@@ -29,8 +30,9 @@ export async function PUT(
   try {
     await connectToDatabase();
     const updates = await req.json();
+    const id = req.url.split("/").pop();
     const updated = await Booking.findOneAndUpdate(
-      { id: params.id },
+      { bookingId: id },
       { ...updates, updatedAt: new Date() },
       { new: true }
     );

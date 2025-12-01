@@ -1,90 +1,133 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useBookingsStore, useCarsStore } from "@/lib/store"
-import { users } from "@/lib/data"
-import type { BookingStatus } from "@/types"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useToast } from "@/hooks/use-toast"
-import { format } from "date-fns"
-import { Search, Download, FileText } from "lucide-react"
+import { useState } from "react";
+import { useBookingsStore, useCarsStore } from "@/lib/store";
+import { users } from "@/lib/data";
+import type { BookingStatus } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { Search, Download, FileText } from "lucide-react";
 
 const statusConfig: Record<BookingStatus, { label: string; color: string }> = {
-  pending_payment: { label: "Pending Payment", color: "bg-warning text-warning-foreground" },
-  confirmed: { label: "Confirmed", color: "bg-success text-success-foreground" },
-  cancelled: { label: "Cancelled", color: "bg-destructive text-destructive-foreground" },
+  pending_payment: {
+    label: "Pending Payment",
+    color: "bg-warning text-warning-foreground",
+  },
+  confirmed: {
+    label: "Confirmed",
+    color: "bg-success text-success-foreground",
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "bg-destructive text-destructive-foreground",
+  },
   completed: { label: "Completed", color: "bg-muted text-muted-foreground" },
-}
+};
 
 export default function AdminBookingsPage() {
-  const { bookings, updateBooking } = useBookingsStore()
-  const { cars } = useCarsStore()
-  const { toast } = useToast()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const { bookings, updateBooking } = useBookingsStore();
+  const { cars } = useCarsStore();
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const filteredBookings = bookings
     .filter((booking) => {
-      const car = cars.find((c) => c.id === booking.carId)
-      const customer = users.find((u) => u.id === booking.userId)
-      const query = searchQuery.toLowerCase()
+      const car = cars.find((c) => c.id === booking.carId);
+      const customer = users.find((u) => u.id === booking.userId);
+      const query = searchQuery.toLowerCase();
 
       const matchesSearch =
         car?.make.toLowerCase().includes(query) ||
-        car?.model.toLowerCase().includes(query) ||
+        car?.carModel.toLowerCase().includes(query) ||
         customer?.name.toLowerCase().includes(query) ||
         customer?.email.toLowerCase().includes(query) ||
-        booking.id.toLowerCase().includes(query)
+        booking.id.toLowerCase().includes(query);
 
-      const matchesStatus = statusFilter === "all" || booking.bookingStatus === statusFilter
+      const matchesStatus =
+        statusFilter === "all" || booking.bookingStatus === statusFilter;
 
-      return matchesSearch && matchesStatus
+      return matchesSearch && matchesStatus;
     })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
   const handleStatusChange = (bookingId: string, newStatus: BookingStatus) => {
-    updateBooking(bookingId, { bookingStatus: newStatus })
+    updateBooking(bookingId, { bookingStatus: newStatus });
     toast({
       title: "Status updated",
       description: `Booking status changed to ${statusConfig[newStatus].label}`,
-    })
-  }
+    });
+  };
 
   const exportToCSV = () => {
-    const headers = ["Booking ID", "Customer", "Car", "Start Date", "End Date", "Total", "Status", "Payment"]
+    const headers = [
+      "Booking ID",
+      "Customer",
+      "Car",
+      "Start Date",
+      "End Date",
+      "Total",
+      "Status",
+      "Payment",
+    ];
     const rows = filteredBookings.map((booking) => {
-      const car = cars.find((c) => c.id === booking.carId)
-      const customer = users.find((u) => u.id === booking.userId)
+      const car = cars.find((c) => c.id === booking.carId);
+      const customer = users.find((u) => u.id === booking.userId);
       return [
         booking.id,
         customer?.name || "Unknown",
-        `${car?.make} ${car?.model}`,
+        `${car?.make} ${car?.carModel}`,
         format(new Date(booking.startDate), "yyyy-MM-dd"),
         format(new Date(booking.endDate), "yyyy-MM-dd"),
         booking.totalAmount,
         booking.bookingStatus,
         booking.paymentStatus,
-      ]
-    })
+      ];
+    });
 
-    const csvContent = [headers, ...rows].map((row) => row.join(",")).join("\n")
-    const blob = new Blob([csvContent], { type: "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `bookings-${format(new Date(), "yyyy-MM-dd")}.csv`
-    a.click()
+    const csvContent = [headers, ...rows]
+      .map((row) => row.join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bookings-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
 
     toast({
       title: "Export complete",
       description: "Bookings have been exported to CSV.",
-    })
-  }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -104,7 +147,9 @@ export default function AdminBookingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
               <CardTitle>All Bookings</CardTitle>
-              <CardDescription>{filteredBookings.length} bookings found</CardDescription>
+              <CardDescription>
+                {filteredBookings.length} bookings found
+              </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative">
@@ -122,7 +167,9 @@ export default function AdminBookingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending_payment">Pending Payment</SelectItem>
+                  <SelectItem value="pending_payment">
+                    Pending Payment
+                  </SelectItem>
                   <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -136,7 +183,6 @@ export default function AdminBookingsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Booking ID</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Vehicle</TableHead>
                   <TableHead>Dates</TableHead>
@@ -147,31 +193,39 @@ export default function AdminBookingsPage() {
               </TableHeader>
               <TableBody>
                 {filteredBookings.map((booking) => {
-                  const car = cars.find((c) => c.id === booking.carId)
-                  const customer = users.find((u) => u.id === booking.userId)
-                  const status = statusConfig[booking.bookingStatus]
+                  const car = cars.find((c) => c.id === booking.carId);
+                  const customer = users.find((u) => u.id === booking.userId);
+                  const status = statusConfig[booking.bookingStatus];
 
                   return (
                     <TableRow key={booking.id}>
-                      <TableCell className="font-mono text-sm">{booking.id}</TableCell>
                       <TableCell>
                         <div>
                           <p className="font-medium">{customer?.name}</p>
-                          <p className="text-sm text-muted-foreground">{customer?.email}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {customer?.email}
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <p className="font-medium">
-                          {car?.make} {car?.model}
+                          {car?.make} {car?.carModel}
                         </p>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <p>{format(new Date(booking.startDate), "MMM d, yyyy")}</p>
-                          <p className="text-muted-foreground">to {format(new Date(booking.endDate), "MMM d, yyyy")}</p>
+                          <p>
+                            {format(new Date(booking.startDate), "MMM d, yyyy")}
+                          </p>
+                          <p className="text-muted-foreground">
+                            to{" "}
+                            {format(new Date(booking.endDate), "MMM d, yyyy")}
+                          </p>
                         </div>
                       </TableCell>
-                      <TableCell className="font-semibold">${booking.totalAmount}</TableCell>
+                      <TableCell className="font-semibold">
+                        ${booking.totalAmount}
+                      </TableCell>
                       <TableCell>
                         <Badge className={status.color}>{status.label}</Badge>
                       </TableCell>
@@ -179,21 +233,35 @@ export default function AdminBookingsPage() {
                         <div className="flex items-center gap-2">
                           <Select
                             value={booking.bookingStatus}
-                            onValueChange={(value: BookingStatus) => handleStatusChange(booking.id, value)}
+                            onValueChange={(value: BookingStatus) =>
+                              handleStatusChange(booking.id, value)
+                            }
                           >
                             <SelectTrigger className="w-32">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pending_payment">Pending</SelectItem>
-                              <SelectItem value="confirmed">Confirmed</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                              <SelectItem value="pending_payment">
+                                Pending
+                              </SelectItem>
+                              <SelectItem value="confirmed">
+                                Confirmed
+                              </SelectItem>
+                              <SelectItem value="completed">
+                                Completed
+                              </SelectItem>
+                              <SelectItem value="cancelled">
+                                Cancelled
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           {booking.invoiceUrl && (
                             <Button variant="ghost" size="icon" asChild>
-                              <a href={booking.invoiceUrl} target="_blank" rel="noopener noreferrer">
+                              <a
+                                href={booking.invoiceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
                                 <FileText className="h-4 w-4" />
                               </a>
                             </Button>
@@ -201,7 +269,7 @@ export default function AdminBookingsPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })}
               </TableBody>
             </Table>
@@ -209,5 +277,5 @@ export default function AdminBookingsPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

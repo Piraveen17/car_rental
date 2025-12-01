@@ -4,6 +4,7 @@ export type TransmissionType = "manual" | "automatic";
 export type CarStatus = "active" | "inactive" | "maintenance";
 
 export interface ICar extends Document {
+  carId: string;
   make: string;
   carModel: string;
   year: number;
@@ -20,8 +21,24 @@ export interface ICar extends Document {
   updatedAt: Date;
 }
 
+export type CarPayload = {
+  make: string;
+  carModel: string;
+  year: number;
+  pricePerDay: number;
+  transmission: TransmissionType;
+  seats: number;
+  fuelType: string;
+  location: string;
+  status: CarStatus;
+  description?: string;
+  features: string[];
+  images: string[];
+};
+
 const CarSchema: Schema<ICar> = new Schema(
   {
+    carId: { type: String, required: true },
     make: { type: String, required: true },
     carModel: { type: String, required: true },
     year: { type: Number, required: true },

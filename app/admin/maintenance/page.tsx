@@ -1,15 +1,21 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useMaintenanceStore, useCarsStore } from "@/lib/store"
-import type { MaintenanceStatus } from "@/types"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState } from "react";
+import { useMaintenanceStore, useCarsStore } from "@/lib/store";
+import Maintenance from "@/models/Maintenance";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,20 +23,37 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
-import { format } from "date-fns"
-import { Plus, Pencil, Trash2, Wrench } from "lucide-react"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { Plus, Pencil, Trash2, Wrench } from "lucide-react";
+import { MaintenancePayload } from "@/types";
 
 export default function AdminMaintenancePage() {
-  const { records, addRecord, updateRecord, deleteRecord } = useMaintenanceStore()
-  const { cars, updateCar } = useCarsStore()
-  const { toast } = useToast()
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingRecord, setEditingRecord] = useState<string | null>(null)
+  const { records, fetchRecords, addRecord, updateRecord, deleteRecord } =
+    useMaintenanceStore();
+  const { cars, fetchCars, updateCar } = useCarsStore();
+  const { toast } = useToast();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<string | null>(null);
+
+  type MaintenanceStatus = "pending" | "fixed";
 
   const [formData, setFormData] = useState({
     carId: "",
@@ -38,7 +61,7 @@ export default function AdminMaintenancePage() {
     cost: 0,
     date: format(new Date(), "yyyy-MM-dd"),
     status: "pending" as MaintenanceStatus,
-  })
+  });
 
   const resetForm = () => {
     setFormData({
@@ -47,98 +70,112 @@ export default function AdminMaintenancePage() {
       cost: 0,
       date: format(new Date(), "yyyy-MM-dd"),
       status: "pending",
-    })
-    setEditingRecord(null)
-  }
+    });
+    setEditingRecord(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const recordData = {
+    const payload: MaintenancePayload = {
       carId: formData.carId,
       issue: formData.issue,
       cost: formData.cost,
       date: new Date(formData.date),
       status: formData.status,
-    }
+    };
 
     if (editingRecord) {
-      updateRecord(editingRecord, recordData)
+      updateRecord(editingRecord, payload);
       toast({
         title: "Record updated",
         description: "Maintenance record has been updated.",
-      })
+      });
     } else {
-      addRecord(recordData)
+      addRecord(payload);
       // Update car status to maintenance if pending
       if (formData.status === "pending") {
-        updateCar(formData.carId, { status: "maintenance" })
+        updateCar(formData.carId, { status: "maintenance" });
       }
       toast({
         title: "Record added",
         description: "Maintenance record has been created.",
-      })
+      });
     }
 
-    resetForm()
-    setIsDialogOpen(false)
-  }
+    resetForm();
+    setIsDialogOpen(false);
+  };
 
   const handleEdit = (recordId: string) => {
-    const record = records.find((r) => r.id === recordId)
+    const record = records.find((r) => r.recordId === recordId);
     if (record) {
-      setEditingRecord(recordId)
+      setEditingRecord(recordId);
       setFormData({
         carId: record.carId,
         issue: record.issue,
         cost: record.cost,
         date: format(new Date(record.date), "yyyy-MM-dd"),
         status: record.status,
-      })
-      setIsDialogOpen(true)
+      });
+      setIsDialogOpen(true);
     }
-  }
+  };
 
   const handleDelete = (recordId: string) => {
-    deleteRecord(recordId)
+    deleteRecord(recordId);
     toast({
       title: "Record deleted",
       description: "Maintenance record has been removed.",
-    })
-  }
+    });
+  };
 
-  const handleStatusChange = (recordId: string, newStatus: MaintenanceStatus) => {
-    const record = records.find((r) => r.id === recordId)
+  const handleStatusChange = (
+    recordId: string,
+    newStatus: MaintenanceStatus
+  ) => {
+    const record = records.find((r) => r.recordId === recordId);
     if (record) {
-      updateRecord(recordId, { status: newStatus })
+      const updatedRecord = {
+        ...record,
+        status: newStatus,
+      } as MaintenancePayload;
+      updateRecord(recordId, updatedRecord);
       // Update car status based on maintenance status
       if (newStatus === "fixed") {
-        updateCar(record.carId, { status: "active" })
+        updateCar(record.carId, { status: "active" });
       } else {
-        updateCar(record.carId, { status: "maintenance" })
+        updateCar(record.carId, { status: "maintenance" });
       }
       toast({
         title: "Status updated",
         description: `Maintenance marked as ${newStatus}.`,
-      })
+      });
     }
-  }
+  };
 
-  const totalCost = records.reduce((sum, r) => sum + r.cost, 0)
-  const pendingCount = records.filter((r) => r.status === "pending").length
+  useEffect(() => {
+    fetchRecords();
+    fetchCars();
+  }, [fetchRecords, fetchCars]);
+
+  const totalCost = records.reduce((sum, r) => sum + r.cost, 0);
+  const pendingCount = records.filter((r) => r.status === "pending").length;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Maintenance Management</h1>
-          <p className="text-muted-foreground">Track vehicle maintenance and repairs</p>
+          <p className="text-muted-foreground">
+            Track vehicle maintenance and repairs
+          </p>
         </div>
         <Dialog
           open={isDialogOpen}
           onOpenChange={(open) => {
-            setIsDialogOpen(open)
-            if (!open) resetForm()
+            setIsDialogOpen(open);
+            if (!open) resetForm();
           }}
         >
           <DialogTrigger asChild>
@@ -149,22 +186,31 @@ export default function AdminMaintenancePage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingRecord ? "Edit Record" : "Add Maintenance Record"}</DialogTitle>
+              <DialogTitle>
+                {editingRecord ? "Edit Record" : "Add Maintenance Record"}
+              </DialogTitle>
               <DialogDescription>
-                {editingRecord ? "Update the maintenance details." : "Log a new maintenance issue."}
+                {editingRecord
+                  ? "Update the maintenance details."
+                  : "Log a new maintenance issue."}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="carId">Vehicle</Label>
-                <Select value={formData.carId} onValueChange={(value) => setFormData({ ...formData, carId: value })}>
+                <Select
+                  value={formData.carId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, carId: value })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a vehicle" />
                   </SelectTrigger>
                   <SelectContent>
                     {cars.map((car) => (
-                      <SelectItem key={car.id} value={car.id}>
-                        {car.make} {car.model} ({car.year})
+                      <SelectItem key={car.carId} value={car.carId}>
+                        {car.make} {car.carModel} ({car.year})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -176,7 +222,9 @@ export default function AdminMaintenancePage() {
                 <Textarea
                   id="issue"
                   value={formData.issue}
-                  onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, issue: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -188,7 +236,12 @@ export default function AdminMaintenancePage() {
                     id="cost"
                     type="number"
                     value={formData.cost}
-                    onChange={(e) => setFormData({ ...formData, cost: Number.parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        cost: Number.parseInt(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>
@@ -198,7 +251,9 @@ export default function AdminMaintenancePage() {
                     id="date"
                     type="date"
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, date: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -208,7 +263,9 @@ export default function AdminMaintenancePage() {
                 <Label htmlFor="status">Status</Label>
                 <Select
                   value={formData.status}
-                  onValueChange={(value: MaintenanceStatus) => setFormData({ ...formData, status: value })}
+                  onValueChange={(value: MaintenanceStatus) =>
+                    setFormData({ ...formData, status: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -225,13 +282,15 @@ export default function AdminMaintenancePage() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    resetForm()
-                    setIsDialogOpen(false)
+                    resetForm();
+                    setIsDialogOpen(false);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button type="submit">{editingRecord ? "Update" : "Add Record"}</Button>
+                <Button type="submit">
+                  {editingRecord ? "Update" : "Add Record"}
+                </Button>
               </div>
             </form>
           </DialogContent>
@@ -260,7 +319,9 @@ export default function AdminMaintenancePage() {
                 <Wrench className="h-6 w-6 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{records.length - pendingCount}</p>
+                <p className="text-2xl font-bold">
+                  {records.length - pendingCount}
+                </p>
                 <p className="text-sm text-muted-foreground">Fixed Issues</p>
               </div>
             </div>
@@ -273,7 +334,9 @@ export default function AdminMaintenancePage() {
                 <Wrench className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">${totalCost.toLocaleString()}</p>
+                <p className="text-2xl font-bold">
+                  ${totalCost.toLocaleString()}
+                </p>
                 <p className="text-sm text-muted-foreground">Total Cost</p>
               </div>
             </div>
@@ -301,21 +364,29 @@ export default function AdminMaintenancePage() {
               </TableHeader>
               <TableBody>
                 {records.map((record) => {
-                  const car = cars.find((c) => c.id === record.carId)
+                  const car = cars.find((c) => c.carId === record.carId);
                   return (
-                    <TableRow key={record.id}>
+                    <TableRow key={record.recordId}>
                       <TableCell>
                         <p className="font-medium">
-                          {car?.make} {car?.model}
+                          {car?.make} {car?.carModel}
                         </p>
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">{record.issue}</TableCell>
-                      <TableCell>{format(new Date(record.date), "MMM d, yyyy")}</TableCell>
-                      <TableCell className="font-semibold">${record.cost}</TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {record.issue}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(record.date), "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        ${record.cost}
+                      </TableCell>
                       <TableCell>
                         <Select
                           value={record.status}
-                          onValueChange={(value: MaintenanceStatus) => handleStatusChange(record.id, value)}
+                          onValueChange={(value: MaintenanceStatus) =>
+                            handleStatusChange(record.recordId, value)
+                          }
                         >
                           <SelectTrigger className="w-28">
                             <Badge
@@ -336,21 +407,25 @@ export default function AdminMaintenancePage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(record.id)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(record.recordId)}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="text-destructive"
-                            onClick={() => handleDelete(record.id)}
+                            onClick={() => handleDelete(record.recordId)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })}
               </TableBody>
             </Table>
@@ -358,5 +433,5 @@ export default function AdminMaintenancePage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -1,15 +1,21 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useCarsStore } from "@/lib/store"
-import type { Car, CarStatus, TransmissionType } from "@/types"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState } from "react";
+import { useCarsStore } from "@/lib/store";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,27 +23,59 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
-import { Plus, Pencil, Trash2, Search } from "lucide-react"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { CarPayload, CarStatus, ICar, TransmissionType } from "@/models/Car";
+
+/**
+ * Local form type: keep features as a comma-separated string for UI convenience.
+ * We omit/relax fields that are managed server-side (id, images, createdAt, updatedAt).
+ */
+type CarForm = Omit<
+  Partial<ICar>,
+  "features" | "images" | "createdAt" | "updatedAt"
+> & {
+  features: string; // comma-separated in the form UI
+  images?: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
+};
 
 export default function AdminCarsPage() {
-  const { cars, addCar, updateCar, deleteCar } = useCarsStore()
-  const { toast } = useToast()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [editingCar, setEditingCar] = useState<Car | null>(null)
+  // read from Zustand store — cars is the single source of truth (typed as Car[])
+  const { cars, fetchCars, addCar, updateCar, deleteCar } = useCarsStore();
+  const { toast } = useToast();
 
-  // Delete dialog state
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [carToDelete, setCarToDelete] = useState<Car | null>(null)
+  // Form and UI state (explicit generics added)
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
+  const [editingCar, setEditingCar] = useState<ICar | null>(null);
 
-  const [formData, setFormData] = useState({
+  // Delete dialog state (typed)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [carToDelete, setCarToDelete] = useState<ICar | null>(null);
+
+  // form state uses CarForm to avoid type issues between array fields and form string
+  const [formData, setFormData] = useState<CarForm>({
     make: "",
-    model: "",
+    carModel: "",
     year: new Date().getFullYear(),
     pricePerDay: 0,
     transmission: "automatic" as TransmissionType,
@@ -47,21 +85,28 @@ export default function AdminCarsPage() {
     status: "active" as CarStatus,
     description: "",
     features: "",
-  })
+    images: [""],
+  });
 
-  const filteredCars = cars.filter((car) => {
-    const query = searchQuery.toLowerCase()
+  // Fetch cars on mount
+  useEffect(() => {
+    fetchCars();
+  }, [fetchCars]);
+
+  // Filter guard: cars is expected to be Car[] from the store
+  const filteredCars = (cars ?? []).filter((car: ICar) => {
+    const query = searchQuery.toLowerCase();
     return (
       car.make.toLowerCase().includes(query) ||
-      car.model.toLowerCase().includes(query) ||
+      car.carModel.toLowerCase().includes(query) ||
       car.location.toLowerCase().includes(query)
-    )
-  })
+    );
+  });
 
   const resetForm = () => {
     setFormData({
       make: "",
-      model: "",
+      carModel: "",
       year: new Date().getFullYear(),
       pricePerDay: 0,
       transmission: "automatic",
@@ -71,54 +116,66 @@ export default function AdminCarsPage() {
       status: "active",
       description: "",
       features: "",
-    })
-    setEditingCar(null)
-  }
+      images: [""],
+    });
+    setEditingCar(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const carData = {
-      make: formData.make,
-      model: formData.model,
-      year: formData.year,
-      pricePerDay: formData.pricePerDay,
-      transmission: formData.transmission,
-      seats: formData.seats,
-      fuelType: formData.fuelType,
-      location: formData.location,
-      status: formData.status,
-      description: formData.description,
-      features: formData.features
-        .split(",")
-        .map((f) => f.trim())
-        .filter(Boolean),
-      images: [`/placeholder.svg?height=400&width=600&query=${formData.make} ${formData.model} car`],
-    }
+    // Build the payload expected by addCar/updateCar (Car-like object)
+    const payload: CarPayload = {
+      make: formData.make ?? "",
+      carModel: formData.carModel ?? "",
+      year: formData.year ?? new Date().getFullYear(),
+      pricePerDay: formData.pricePerDay ?? 0,
+      transmission: (formData.transmission as TransmissionType) ?? "automatic",
+      seats: formData.seats ?? 5,
+      fuelType: formData.fuelType ?? "",
+      location: formData.location ?? "",
+      status: (formData.status as CarStatus) ?? "active",
+      description: formData.description ?? "",
+      features:
+        formData.features
+          .split(",")
+          .map((f) => f.trim())
+          .filter(Boolean) ?? [],
+      images:
+        formData.images && formData.images.length && formData.images[0] !== ""
+          ? formData.images
+          : [
+              `/placeholder.svg?height=400&width=600&query=${encodeURIComponent(
+                `${formData.make ?? ""} ${formData.carModel ?? ""} car`
+              )}`,
+            ],
+    };
 
     if (editingCar) {
-      updateCar(editingCar.id, carData)
+      // updateCar expects (id, data)
+      updateCar(editingCar.carId, payload);
       toast({
         title: "Car updated",
-        description: `${formData.make} ${formData.model} has been updated.`,
-      })
+        description: `${formData.make} ${formData.carModel} has been updated.`,
+      });
     } else {
-      addCar(carData)
+      addCar(payload);
       toast({
         title: "Car added",
-        description: `${formData.make} ${formData.model} has been added to the fleet.`,
-      })
+        description: `${formData.make} ${formData.carModel} has been added to the fleet.`,
+      });
     }
 
-    resetForm()
-    setIsAddDialogOpen(false)
-  }
+    resetForm();
+    setIsAddDialogOpen(false);
+  };
 
-  const handleEdit = (car: Car) => {
-    setEditingCar(car)
+  // Prefill form for editing — convert Car -> CarForm (features array -> csv string)
+  const handleEdit = (car: ICar) => {
+    setEditingCar(car);
     setFormData({
       make: car.make,
-      model: car.model,
+      carModel: car.carModel,
       year: car.year,
       pricePerDay: car.pricePerDay,
       transmission: car.transmission,
@@ -126,41 +183,44 @@ export default function AdminCarsPage() {
       fuelType: car.fuelType,
       location: car.location,
       status: car.status,
-      description: car.description || "",
-      features: car.features.join(", "),
-    })
-    setIsAddDialogOpen(true)
-  }
+      description: car.description ?? "",
+      features: (car.features ?? []).join(", "),
+      images: car.images ?? [],
+      createdAt: car.createdAt,
+      updatedAt: car.updatedAt,
+    });
+    setIsAddDialogOpen(true);
+  };
 
   // Request delete (opens the confirmation dialog)
-  const requestDelete = (car: Car) => {
-    setCarToDelete(car)
-    setIsDeleteDialogOpen(true)
-  }
+  const requestDelete = (car: ICar) => {
+    setCarToDelete(car);
+    setIsDeleteDialogOpen(true);
+  };
 
   // Confirm delete (executes deletion)
   const confirmDelete = () => {
-    if (!carToDelete) return
-    deleteCar(carToDelete.id)
+    if (!carToDelete) return;
+    deleteCar(carToDelete.carId);
     toast({
       title: "Car deleted",
-      description: `${carToDelete.make} ${carToDelete.model} has been removed from the fleet.`,
-    })
-    setIsDeleteDialogOpen(false)
-    setCarToDelete(null)
-  }
+      description: `${carToDelete.make} ${carToDelete.carModel} has been removed from the fleet.`,
+    });
+    setIsDeleteDialogOpen(false);
+    setCarToDelete(null);
+  };
 
   // Cancel delete
   const cancelDelete = () => {
-    setIsDeleteDialogOpen(false)
-    setCarToDelete(null)
-  }
+    setIsDeleteDialogOpen(false);
+    setCarToDelete(null);
+  };
 
-  const statusColors = {
+  const statusColors: Record<CarStatus, string> = {
     active: "bg-success text-success-foreground",
     inactive: "bg-muted text-muted-foreground",
     maintenance: "bg-warning text-warning-foreground",
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -170,12 +230,12 @@ export default function AdminCarsPage() {
           <p className="text-muted-foreground">Manage your vehicle fleet</p>
         </div>
 
-        {/* Add / Edit Dialog (unchanged) */}
+        {/* Add / Edit Dialog */}
         <Dialog
           open={isAddDialogOpen}
           onOpenChange={(open) => {
-            setIsAddDialogOpen(open)
-            if (!open) resetForm()
+            setIsAddDialogOpen(open);
+            if (!open) resetForm();
           }}
         >
           <DialogTrigger asChild>
@@ -186,20 +246,25 @@ export default function AdminCarsPage() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingCar ? "Edit Car" : "Add New Car"}</DialogTitle>
+              <DialogTitle>
+                {editingCar ? "Edit Car" : "Add New Car"}
+              </DialogTitle>
               <DialogDescription>
-                {editingCar ? "Update the car details below." : "Fill in the details to add a new car to your fleet."}
+                {editingCar
+                  ? "Update the car details below."
+                  : "Fill in the details to add a new car to your fleet."}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* form fields (unchanged) */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="make">Make</Label>
                   <Input
                     id="make"
                     value={formData.make}
-                    onChange={(e) => setFormData({ ...formData, make: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, make: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -207,8 +272,10 @@ export default function AdminCarsPage() {
                   <Label htmlFor="model">Model</Label>
                   <Input
                     id="model"
-                    value={formData.model}
-                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                    value={formData.carModel}
+                    onChange={(e) =>
+                      setFormData({ ...formData, carModel: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -221,7 +288,12 @@ export default function AdminCarsPage() {
                     id="year"
                     type="number"
                     value={formData.year}
-                    onChange={(e) => setFormData({ ...formData, year: Number.parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        year: Number.parseInt(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>
@@ -231,7 +303,12 @@ export default function AdminCarsPage() {
                     id="pricePerDay"
                     type="number"
                     value={formData.pricePerDay}
-                    onChange={(e) => setFormData({ ...formData, pricePerDay: Number.parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pricePerDay: Number.parseInt(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>
@@ -242,7 +319,9 @@ export default function AdminCarsPage() {
                   <Label htmlFor="transmission">Transmission</Label>
                   <Select
                     value={formData.transmission}
-                    onValueChange={(value: TransmissionType) => setFormData({ ...formData, transmission: value })}
+                    onValueChange={(value: TransmissionType) =>
+                      setFormData({ ...formData, transmission: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -259,7 +338,12 @@ export default function AdminCarsPage() {
                     id="seats"
                     type="number"
                     value={formData.seats}
-                    onChange={(e) => setFormData({ ...formData, seats: Number.parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        seats: Number.parseInt(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>
@@ -271,7 +355,9 @@ export default function AdminCarsPage() {
                   <Input
                     id="fuelType"
                     value={formData.fuelType}
-                    onChange={(e) => setFormData({ ...formData, fuelType: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fuelType: e.target.value })
+                    }
                     placeholder="Gasoline, Electric, Hybrid..."
                     required
                   />
@@ -281,7 +367,9 @@ export default function AdminCarsPage() {
                   <Input
                     id="location"
                     value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, location: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -291,7 +379,9 @@ export default function AdminCarsPage() {
                 <Label htmlFor="status">Status</Label>
                 <Select
                   value={formData.status}
-                  onValueChange={(value: CarStatus) => setFormData({ ...formData, status: value })}
+                  onValueChange={(value: CarStatus) =>
+                    setFormData({ ...formData, status: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -309,7 +399,9 @@ export default function AdminCarsPage() {
                 <Input
                   id="features"
                   value={formData.features}
-                  onChange={(e) => setFormData({ ...formData, features: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, features: e.target.value })
+                  }
                   placeholder="Bluetooth, Backup Camera, GPS..."
                 />
               </div>
@@ -319,7 +411,9 @@ export default function AdminCarsPage() {
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   rows={3}
                 />
               </div>
@@ -329,13 +423,15 @@ export default function AdminCarsPage() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    resetForm()
-                    setIsAddDialogOpen(false)
+                    resetForm();
+                    setIsAddDialogOpen(false);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button type="submit">{editingCar ? "Update Car" : "Add Car"}</Button>
+                <Button type="submit">
+                  {editingCar ? "Update Car" : "Add Car"}
+                </Button>
               </div>
             </form>
           </DialogContent>
@@ -347,7 +443,9 @@ export default function AdminCarsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
               <CardTitle>Fleet Overview</CardTitle>
-              <CardDescription>{cars.length} vehicles in fleet</CardDescription>
+              <CardDescription>
+                {(cars ?? []).length} vehicles in fleet
+              </CardDescription>
             </div>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -374,12 +472,12 @@ export default function AdminCarsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCars.map((car) => (
-                  <TableRow key={car.id}>
+                {filteredCars.map((car: ICar) => (
+                  <TableRow key={String(car.carId)}>
                     <TableCell>
                       <div>
                         <p className="font-medium">
-                          {car.make} {car.model}
+                          {car.make} {car.carModel}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {car.transmission} • {car.seats} seats
@@ -390,11 +488,17 @@ export default function AdminCarsPage() {
                     <TableCell>${car.pricePerDay}</TableCell>
                     <TableCell>{car.location}</TableCell>
                     <TableCell>
-                      <Badge className={statusColors[car.status]}>{car.status}</Badge>
+                      <Badge className={statusColors[car.status]}>
+                        {car.status}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(car)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(car)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
@@ -419,18 +523,17 @@ export default function AdminCarsPage() {
       <Dialog
         open={isDeleteDialogOpen}
         onOpenChange={(open) => {
-          setIsDeleteDialogOpen(open)
-          if (!open) setCarToDelete(null)
+          setIsDeleteDialogOpen(open);
+          if (!open) setCarToDelete(null);
         }}
       >
-        {/* We don't need a DialogTrigger here since it's controlled programmatically */}
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete{" "}
               <span className="font-medium">
-                {carToDelete?.make} {carToDelete?.model}
+                {carToDelete?.make} {carToDelete?.carModel}
               </span>
               ? This action cannot be undone.
             </DialogDescription>
@@ -447,5 +550,5 @@ export default function AdminCarsPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

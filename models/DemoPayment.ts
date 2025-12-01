@@ -8,6 +8,7 @@ export interface IDemoPayment extends Document {
   amount: number;
   status: DemoPaymentStatus;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 const DemoPaymentSchema: Schema<IDemoPayment> = new Schema(
@@ -21,7 +22,7 @@ const DemoPaymentSchema: Schema<IDemoPayment> = new Schema(
       default: "pending",
     },
   },
-  { timestamps: { createdAt: true, updatedAt: false } }
+  { timestamps: { createdAt: true, updatedAt: true } }
 );
 
 export const DemoPayment: Model<IDemoPayment> =

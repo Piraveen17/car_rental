@@ -1,11 +1,11 @@
-import type { Car, User, Booking, Maintenance, DemoPayment } from "@/types"
+import type { Car, User, Booking, Maintenance, DemoPayment } from "@/types";
 
 // Demo Users
 export const users: User[] = [
   {
     id: "user-1",
     name: "Admin User",
-    email: "admin@carrental.com",
+    email: "Piraveen1727@gmail.com",
     phone: "+1234567890",
     role: "admin",
     isActive: true,
@@ -43,21 +43,31 @@ export const users: User[] = [
     createdAt: new Date("2024-04-01"),
     updatedAt: new Date("2024-04-01"),
   },
-]
+];
 
 // Demo Cars
 export const cars: Car[] = [
   {
     id: "car-1",
     make: "Toyota",
-    model: "Camry",
+    carModel: "Camry",
     year: 2024,
     pricePerDay: 75,
     transmission: "automatic",
     seats: 5,
     fuelType: "Hybrid",
-    images: ["/toyota-camry-2024-silver-sedan.jpg", "/toyota-camry-interior-dashboard.jpg", "/toyota-camry-rear.png"],
-    features: ["Bluetooth", "Backup Camera", "Lane Departure Warning", "Adaptive Cruise Control", "Apple CarPlay"],
+    images: [
+      "/toyota-camry-2024-silver-sedan.jpg",
+      "/toyota-camry-interior-dashboard.jpg",
+      "/toyota-camry-rear.png",
+    ],
+    features: [
+      "Bluetooth",
+      "Backup Camera",
+      "Lane Departure Warning",
+      "Adaptive Cruise Control",
+      "Apple CarPlay",
+    ],
     location: "New York",
     status: "active",
     description:
@@ -68,13 +78,17 @@ export const cars: Car[] = [
   {
     id: "car-2",
     make: "BMW",
-    model: "X5",
+    carModel: "X5",
     year: 2024,
     pricePerDay: 150,
     transmission: "automatic",
     seats: 7,
     fuelType: "Gasoline",
-    images: ["/bmw-x5-2024-black-luxury-suv.jpg", "/bmw-x5-interior-leather-seats.jpg", "/bmw-x5-side-profile.jpg"],
+    images: [
+      "/bmw-x5-2024-black-luxury-suv.jpg",
+      "/bmw-x5-interior-leather-seats.jpg",
+      "/bmw-x5-side-profile.jpg",
+    ],
     features: [
       "Panoramic Sunroof",
       "Premium Sound System",
@@ -85,55 +99,82 @@ export const cars: Car[] = [
     ],
     location: "Los Angeles",
     status: "active",
-    description: "Experience luxury and performance with the BMW X5. Perfect for those who demand the best.",
+    description:
+      "Experience luxury and performance with the BMW X5. Perfect for those who demand the best.",
     createdAt: new Date("2024-02-01"),
     updatedAt: new Date("2024-02-01"),
   },
   {
     id: "car-3",
     make: "Honda",
-    model: "Civic",
+    carModel: "Civic",
     year: 2023,
     pricePerDay: 55,
     transmission: "manual",
     seats: 5,
     fuelType: "Gasoline",
-    images: ["/honda-civic-2023-red-sporty.jpg", "/honda-civic-interior-modern.jpg", "/honda-civic-rear-angle.jpg"],
+    images: [
+      "/honda-civic-2023-red-sporty.jpg",
+      "/honda-civic-interior-modern.jpg",
+      "/honda-civic-rear-angle.jpg",
+    ],
     features: ["Bluetooth", "USB Ports", "Backup Camera", "Honda Sensing"],
     location: "Chicago",
     status: "active",
-    description: "The Honda Civic offers great fuel economy and a fun driving experience.",
+    description:
+      "The Honda Civic offers great fuel economy and a fun driving experience.",
     createdAt: new Date("2024-02-15"),
     updatedAt: new Date("2024-02-15"),
   },
   {
     id: "car-4",
     make: "Tesla",
-    model: "Model 3",
+    carModel: "Model 3",
     year: 2024,
     pricePerDay: 120,
     transmission: "automatic",
     seats: 5,
     fuelType: "Electric",
-    images: ["/tesla-model-3-2024-white-electric-car.jpg", "/tesla-model-3-minimalist-interior.jpg", "/tesla-model-3-charging.jpg"],
-    features: ["Autopilot", "Full Self-Driving Capability", "Premium Interior", "Glass Roof", "Supercharger Access"],
+    images: [
+      "/tesla-model-3-2024-white-electric-car.jpg",
+      "/tesla-model-3-minimalist-interior.jpg",
+      "/tesla-model-3-charging.jpg",
+    ],
+    features: [
+      "Autopilot",
+      "Full Self-Driving Capability",
+      "Premium Interior",
+      "Glass Roof",
+      "Supercharger Access",
+    ],
     location: "San Francisco",
     status: "active",
-    description: "Go electric with the Tesla Model 3. Zero emissions with cutting-edge technology.",
+    description:
+      "Go electric with the Tesla Model 3. Zero emissions with cutting-edge technology.",
     createdAt: new Date("2024-03-01"),
     updatedAt: new Date("2024-03-01"),
   },
   {
     id: "car-5",
     make: "Mercedes-Benz",
-    model: "E-Class",
+    carModel: "E-Class",
     year: 2024,
     pricePerDay: 180,
     transmission: "automatic",
     seats: 5,
     fuelType: "Gasoline",
-    images: ["/mercedes-e-class-2024-black-luxury-sedan.jpg", "/mercedes-e-class-interior-premium.jpg", "/mercedes-e-class-exterior-elegant.jpg"],
-    features: ["MBUX System", "Burmester Sound", "Air Suspension", "Massage Seats", "Ambient Lighting"],
+    images: [
+      "/mercedes-e-class-2024-black-luxury-sedan.jpg",
+      "/mercedes-e-class-interior-premium.jpg",
+      "/mercedes-e-class-exterior-elegant.jpg",
+    ],
+    features: [
+      "MBUX System",
+      "Burmester Sound",
+      "Air Suspension",
+      "Massage Seats",
+      "Ambient Lighting",
+    ],
     location: "Miami",
     status: "active",
     description:
@@ -144,24 +185,35 @@ export const cars: Car[] = [
   {
     id: "car-6",
     make: "Ford",
-    model: "Mustang",
+    carModel: "Mustang",
     year: 2024,
     pricePerDay: 130,
     transmission: "manual",
     seats: 4,
     fuelType: "Gasoline",
-    images: ["/ford-mustang-2024-red-sports-car.jpg", "/ford-mustang-interior-sporty.jpg", "/placeholder.svg?height=400&width=600"],
-    features: ["V8 Engine", "Performance Package", "Track Apps", "Premium Audio", "Sport Seats"],
+    images: [
+      "/ford-mustang-2024-red-sports-car.jpg",
+      "/ford-mustang-interior-sporty.jpg",
+      "/placeholder.svg?height=400&width=600",
+    ],
+    features: [
+      "V8 Engine",
+      "Performance Package",
+      "Track Apps",
+      "Premium Audio",
+      "Sport Seats",
+    ],
     location: "Las Vegas",
     status: "active",
-    description: "Feel the power of the iconic Ford Mustang. Perfect for those who love performance.",
+    description:
+      "Feel the power of the iconic Ford Mustang. Perfect for those who love performance.",
     createdAt: new Date("2024-04-01"),
     updatedAt: new Date("2024-04-01"),
   },
   {
     id: "car-7",
     make: "Jeep",
-    model: "Wrangler",
+    carModel: "Wrangler",
     year: 2023,
     pricePerDay: 110,
     transmission: "automatic",
@@ -172,17 +224,24 @@ export const cars: Car[] = [
       "/placeholder.svg?height=400&width=600",
       "/placeholder.svg?height=400&width=600",
     ],
-    features: ["4x4", "Removable Top", "Trail Rated", "Waterproof Interior", "Off-Road Tires"],
+    features: [
+      "4x4",
+      "Removable Top",
+      "Trail Rated",
+      "Waterproof Interior",
+      "Off-Road Tires",
+    ],
     location: "Denver",
     status: "active",
-    description: "Adventure awaits with the Jeep Wrangler. Go anywhere, do anything.",
+    description:
+      "Adventure awaits with the Jeep Wrangler. Go anywhere, do anything.",
     createdAt: new Date("2024-04-15"),
     updatedAt: new Date("2024-04-15"),
   },
   {
     id: "car-8",
     make: "Audi",
-    model: "A4",
+    carModel: "A4",
     year: 2024,
     pricePerDay: 95,
     transmission: "automatic",
@@ -193,17 +252,23 @@ export const cars: Car[] = [
       "/placeholder.svg?height=400&width=600",
       "/placeholder.svg?height=400&width=600",
     ],
-    features: ["Virtual Cockpit", "Quattro AWD", "Bang & Olufsen Audio", "Matrix LED Lights"],
+    features: [
+      "Virtual Cockpit",
+      "Quattro AWD",
+      "Bang & Olufsen Audio",
+      "Matrix LED Lights",
+    ],
     location: "Boston",
     status: "maintenance",
-    description: "German engineering at its finest. The Audi A4 combines performance with luxury.",
+    description:
+      "German engineering at its finest. The Audi A4 combines performance with luxury.",
     createdAt: new Date("2024-05-01"),
     updatedAt: new Date("2024-05-01"),
   },
   {
     id: "car-9",
     make: "Chevrolet",
-    model: "Tahoe",
+    carModel: "Tahoe",
     year: 2024,
     pricePerDay: 140,
     transmission: "automatic",
@@ -214,17 +279,23 @@ export const cars: Car[] = [
       "/placeholder.svg?height=400&width=600",
       "/placeholder.svg?height=400&width=600",
     ],
-    features: ["Third Row Seating", "Towing Package", "Rear Entertainment", "Power Liftgate"],
+    features: [
+      "Third Row Seating",
+      "Towing Package",
+      "Rear Entertainment",
+      "Power Liftgate",
+    ],
     location: "Houston",
     status: "active",
-    description: "Perfect for large families or groups. The Tahoe offers space, comfort, and capability.",
+    description:
+      "Perfect for large families or groups. The Tahoe offers space, comfort, and capability.",
     createdAt: new Date("2024-05-15"),
     updatedAt: new Date("2024-05-15"),
   },
   {
     id: "car-10",
     make: "Porsche",
-    model: "911",
+    carModel: "911",
     year: 2024,
     pricePerDay: 350,
     transmission: "automatic",
@@ -235,14 +306,20 @@ export const cars: Car[] = [
       "/placeholder.svg?height=400&width=600",
       "/placeholder.svg?height=400&width=600",
     ],
-    features: ["Sport Chrono Package", "PASM", "Ceramic Brakes", "Sport Exhaust", "PDK Transmission"],
+    features: [
+      "Sport Chrono Package",
+      "PASM",
+      "Ceramic Brakes",
+      "Sport Exhaust",
+      "PDK Transmission",
+    ],
     location: "Los Angeles",
     status: "inactive",
     description: "The legendary Porsche 911. An icon of automotive excellence.",
     createdAt: new Date("2024-06-01"),
     updatedAt: new Date("2024-06-01"),
   },
-]
+];
 
 // Demo Bookings
 export const bookings: Booking[] = [
@@ -310,7 +387,7 @@ export const bookings: Booking[] = [
     createdAt: new Date("2024-08-28"),
     updatedAt: new Date("2024-09-03"),
   },
-]
+];
 
 // Demo Maintenance Records
 export const maintenanceRecords: Maintenance[] = [
@@ -344,7 +421,7 @@ export const maintenanceRecords: Maintenance[] = [
     createdAt: new Date("2024-10-15"),
     updatedAt: new Date("2024-10-17"),
   },
-]
+];
 
 // Demo Payments
 export const demoPayments: DemoPayment[] = [
@@ -364,59 +441,69 @@ export const demoPayments: DemoPayment[] = [
     status: "paid",
     createdAt: new Date("2024-11-25"),
   },
-]
+];
 
 // Helper functions
 export function getCarById(id: string): Car | undefined {
-  return cars.find((car) => car.id === id)
+  return cars.find((car) => car.id === id);
 }
 
 export function getUserById(id: string): User | undefined {
-  return users.find((user) => user.id === id)
+  return users.find((user) => user.id === id);
 }
 
 export function getBookingById(id: string): Booking | undefined {
-  return bookings.find((booking) => booking.id === id)
+  return bookings.find((booking) => booking.id === id);
 }
 
 export function getBookingsForUser(userId: string): Booking[] {
-  return bookings.filter((booking) => booking.userId === userId)
+  return bookings.filter((booking) => booking.userId === userId);
 }
 
 export function getBookingsForCar(carId: string): Booking[] {
-  return bookings.filter((booking) => booking.carId === carId)
+  return bookings.filter((booking) => booking.carId === carId);
 }
 
 export function getMaintenanceForCar(carId: string): Maintenance[] {
-  return maintenanceRecords.filter((record) => record.carId === carId)
+  return maintenanceRecords.filter((record) => record.carId === carId);
 }
 
-export function isCarAvailable(carId: string, startDate: Date, endDate: Date): boolean {
-  const car = getCarById(carId)
-  if (!car || car.status !== "active") return false
+export function isCarAvailable(
+  carId: string,
+  startDate: Date,
+  endDate: Date
+): boolean {
+  const car = getCarById(carId);
+  if (!car || car.status !== "active") return false;
 
   const conflictingBookings = bookings.filter((booking) => {
-    if (booking.carId !== carId) return false
-    if (booking.bookingStatus === "cancelled") return false
+    if (booking.carId !== carId) return false;
+    if (booking.bookingStatus === "cancelled") return false;
 
-    const bookingStart = new Date(booking.startDate)
-    const bookingEnd = new Date(booking.endDate)
+    const bookingStart = new Date(booking.startDate);
+    const bookingEnd = new Date(booking.endDate);
 
-    return startDate <= bookingEnd && endDate >= bookingStart
-  })
+    return startDate <= bookingEnd && endDate >= bookingStart;
+  });
 
-  return conflictingBookings.length === 0
+  return conflictingBookings.length === 0;
 }
 
-export function calculateTotalAmount(pricePerDay: number, startDate: Date, endDate: Date): number {
-  const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-  return days * pricePerDay
+export function calculateTotalAmount(
+  pricePerDay: number,
+  startDate: Date,
+  endDate: Date
+): number {
+  const days = Math.ceil(
+    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  return days * pricePerDay;
 }
 
 export function getUniqueMakes(): string[] {
-  return [...new Set(cars.map((car) => car.make))]
+  return [...new Set(cars.map((car) => car.make))];
 }
 
 export function getUniqueLocations(): string[] {
-  return [...new Set(cars.map((car) => car.location))]
+  return [...new Set(cars.map((car) => car.location))];
 }

@@ -16,6 +16,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 const navLinks = [
   { href: "/cars", label: "Browse Cars" },
@@ -27,6 +28,12 @@ export function Navbar() {
   const pathname = usePathname()
   const { user, isAuthenticated, logout } = useAuthStore()
   const [open, setOpen] = useState(false)
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login"); // redirect after logout
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -89,7 +96,7 @@ export function Navbar() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="text-destructive">
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>

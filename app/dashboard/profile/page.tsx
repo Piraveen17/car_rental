@@ -27,15 +27,13 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login")
-    } else if (user) {
+    if (user) {
       setName(user.name)
       setEmail(user.email)
       setPhone(user.phone || "")
       setNicPassport(user.nicPassport || "")
     }
-  }, [isAuthenticated, user, router])
+  }, [user])
 
   if (!isAuthenticated || !user) return null
 

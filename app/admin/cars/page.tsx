@@ -1,8 +1,7 @@
 "use client";
 
-import type React from "react";
-
 import { useEffect, useState } from "react";
+
 import { useCarsStore } from "@/lib/store";
 
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
-import { CarPayload, CarStatus, ICar, TransmissionType } from "@/models/Car";
+import { CarPayload, CarStatus, ICar, TransmissionType } from "@/types";
+import { ImageUpload } from "@/components/image-upload";
 
 /**
  * Local form type: keep features as a comma-separated string for UI convenience.
@@ -75,12 +75,12 @@ export default function AdminCarsPage() {
   // form state uses CarForm to avoid type issues between array fields and form string
   const [formData, setFormData] = useState<CarForm>({
     make: "",
-    carModel: "",
+    model: "",
     year: new Date().getFullYear(),
-    pricePerDay: 0,
+    price_per_day: 0,
     transmission: "automatic" as TransmissionType,
     seats: 5,
-    fuelType: "",
+    fuel_type: "",
     location: "",
     status: "active" as CarStatus,
     description: "",
@@ -98,7 +98,7 @@ export default function AdminCarsPage() {
     const query = searchQuery.toLowerCase();
     return (
       car.make.toLowerCase().includes(query) ||
-      car.carModel.toLowerCase().includes(query) ||
+      car.model.toLowerCase().includes(query) ||
       car.location.toLowerCase().includes(query)
     );
   });
@@ -106,12 +106,12 @@ export default function AdminCarsPage() {
   const resetForm = () => {
     setFormData({
       make: "",
-      carModel: "",
+      model: "",
       year: new Date().getFullYear(),
-      pricePerDay: 0,
+      price_per_day: 0,
       transmission: "automatic",
       seats: 5,
-      fuelType: "",
+      fuel_type: "",
       location: "",
       status: "active",
       description: "",
@@ -127,12 +127,12 @@ export default function AdminCarsPage() {
     // Build the payload expected by addCar/updateCar (Car-like object)
     const payload: CarPayload = {
       make: formData.make ?? "",
-      carModel: formData.carModel ?? "",
+      model: formData.model ?? "",
       year: formData.year ?? new Date().getFullYear(),
-      pricePerDay: formData.pricePerDay ?? 0,
+      price_per_day: formData.price_per_day ?? 0,
       transmission: (formData.transmission as TransmissionType) ?? "automatic",
       seats: formData.seats ?? 5,
-      fuelType: formData.fuelType ?? "",
+      fuel_type: formData.fuel_type ?? "",
       location: formData.location ?? "",
       status: (formData.status as CarStatus) ?? "active",
       description: formData.description ?? "",
@@ -142,27 +142,27 @@ export default function AdminCarsPage() {
           .map((f) => f.trim())
           .filter(Boolean) ?? [],
       images:
-        formData.images && formData.images.length && formData.images[0] !== ""
+        formData.images && formData.images.length > 0
           ? formData.images
           : [
               `/placeholder.svg?height=400&width=600&query=${encodeURIComponent(
-                `${formData.make ?? ""} ${formData.carModel ?? ""} car`
+                `${formData.make ?? ""} ${formData.model ?? ""} car`
               )}`,
             ],
     };
 
     if (editingCar) {
       // updateCar expects (id, data)
-      updateCar(editingCar.carId, payload);
+      updateCar(editingCar.car_id, payload);
       toast({
         title: "Car updated",
-        description: `${formData.make} ${formData.carModel} has been updated.`,
+        description: `${formData.make} ${formData.model} has been updated.`,
       });
     } else {
       addCar(payload);
       toast({
         title: "Car added",
-        description: `${formData.make} ${formData.carModel} has been added to the fleet.`,
+        description: `${formData.make} ${formData.model} has been added to the fleet.`,
       });
     }
 
@@ -175,12 +175,12 @@ export default function AdminCarsPage() {
     setEditingCar(car);
     setFormData({
       make: car.make,
-      carModel: car.carModel,
+      model: car.model,
       year: car.year,
-      pricePerDay: car.pricePerDay,
+      price_per_day: car.price_per_day,
       transmission: car.transmission,
       seats: car.seats,
-      fuelType: car.fuelType,
+      fuel_type: car.fuel_type,
       location: car.location,
       status: car.status,
       description: car.description ?? "",
@@ -201,10 +201,10 @@ export default function AdminCarsPage() {
   // Confirm delete (executes deletion)
   const confirmDelete = () => {
     if (!carToDelete) return;
-    deleteCar(carToDelete.carId);
+    deleteCar(carToDelete.car_id);
     toast({
       title: "Car deleted",
-      description: `${carToDelete.make} ${carToDelete.carModel} has been removed from the fleet.`,
+      description: `${carToDelete.make} ${carToDelete.model} has been removed from the fleet.`,
     });
     setIsDeleteDialogOpen(false);
     setCarToDelete(null);
@@ -220,6 +220,14 @@ export default function AdminCarsPage() {
     active: "bg-success text-success-foreground",
     inactive: "bg-muted text-muted-foreground",
     maintenance: "bg-warning text-warning-foreground",
+  };
+
+  const handleStatusChange = (carId: string, newStatus: CarStatus) => {
+    updateCar(carId, { status: newStatus });
+    toast({
+      title: "Status updated",
+      description: `Car status changed to ${newStatus}.`,
+    });
   };
 
   return (
@@ -272,9 +280,9 @@ export default function AdminCarsPage() {
                   <Label htmlFor="model">Model</Label>
                   <Input
                     id="model"
-                    value={formData.carModel}
+                    value={formData.model}
                     onChange={(e) =>
-                      setFormData({ ...formData, carModel: e.target.value })
+                      setFormData({ ...formData, model: e.target.value })
                     }
                     required
                   />
@@ -298,15 +306,15 @@ export default function AdminCarsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="pricePerDay">Price Per Day ($)</Label>
+                  <Label htmlFor="price_per_day">Price Per Day ($)</Label>
                   <Input
-                    id="pricePerDay"
+                    id="price_per_day"
                     type="number"
-                    value={formData.pricePerDay}
+                    value={formData.price_per_day}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        pricePerDay: Number.parseInt(e.target.value),
+                        price_per_day: Number.parseInt(e.target.value),
                       })
                     }
                     required
@@ -351,12 +359,12 @@ export default function AdminCarsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fuelType">Fuel Type</Label>
+                  <Label htmlFor="fuel_type">Fuel Type</Label>
                   <Input
-                    id="fuelType"
-                    value={formData.fuelType}
+                    id="fuel_type"
+                    value={formData.fuel_type}
                     onChange={(e) =>
-                      setFormData({ ...formData, fuelType: e.target.value })
+                      setFormData({ ...formData, fuel_type: e.target.value })
                     }
                     placeholder="Gasoline, Electric, Hybrid..."
                     required
@@ -418,6 +426,14 @@ export default function AdminCarsPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                 <Label>Images</Label>
+                 <ImageUpload 
+                    defaultImages={formData.images?.filter(Boolean)} 
+                    onUploadComplete={(urls) => setFormData({...formData, images: urls})} 
+                 />
+              </div>
+
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -473,11 +489,11 @@ export default function AdminCarsPage() {
               </TableHeader>
               <TableBody>
                 {filteredCars.map((car: ICar) => (
-                  <TableRow key={String(car.carId)}>
+                  <TableRow key={String(car.car_id)}>
                     <TableCell>
                       <div>
                         <p className="font-medium">
-                          {car.make} {car.carModel}
+                          {car.make} {car.model}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {car.transmission} • {car.seats} seats
@@ -485,12 +501,26 @@ export default function AdminCarsPage() {
                       </div>
                     </TableCell>
                     <TableCell>{car.year}</TableCell>
-                    <TableCell>${car.pricePerDay}</TableCell>
+                    <TableCell>${car.price_per_day}</TableCell>
                     <TableCell>{car.location}</TableCell>
                     <TableCell>
-                      <Badge className={statusColors[car.status]}>
-                        {car.status}
-                      </Badge>
+                      <Select
+                        value={car.status}
+                        onValueChange={(value: CarStatus) =>
+                          handleStatusChange(car.car_id, value)
+                        }
+                      >
+                        <SelectTrigger className="w-32">
+                          <Badge className={statusColors[car.status]}>
+                            {car.status}
+                          </Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="maintenance">Maintenance</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -533,7 +563,7 @@ export default function AdminCarsPage() {
             <DialogDescription>
               Are you sure you want to delete{" "}
               <span className="font-medium">
-                {carToDelete?.make} {carToDelete?.carModel}
+                {carToDelete?.make} {carToDelete?.model}
               </span>
               ? This action cannot be undone.
             </DialogDescription>

@@ -9,7 +9,7 @@ import { useAuthStore } from "@/lib/store"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Car, LayoutDashboard, Calendar, Users, Wrench, BarChart3, LogOut, Menu, X } from "lucide-react"
+import { Car, LayoutDashboard, Calendar, Users, Wrench, BarChart3, LogOut, Menu, X, DollarSign, MessageSquare } from "lucide-react"
 import { useState } from "react"
 
 const sidebarLinks = [
@@ -18,22 +18,34 @@ const sidebarLinks = [
   { href: "/admin/bookings", label: "Bookings", icon: Calendar },
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/maintenance", label: "Maintenance", icon: Wrench },
+  { href: "/admin/sales", label: "Car Sales", icon: DollarSign },
+  { href: "/admin/leads", label: "Leads", icon: MessageSquare },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const { user, isAuthenticated, logout, isHydrated } = useAuthStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login")
-    } else if (user?.role !== "admin") {
-      router.push("/dashboard")
+    // Only redirect if hydration is complete
+    if (isHydrated) {
+      if (isAuthenticated && user?.role !== "admin") {
+        router.push("/dashboard")
+      }
     }
-  }, [isAuthenticated, user, router])
+  }, [isAuthenticated, user, router, isHydrated])
+
+  // Show loading or nothing while hydrating
+  if (!isHydrated) {
+      return (
+          <div className="flex h-screen items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+      )
+  }
 
   if (!isAuthenticated || user?.role !== "admin") {
     return null
@@ -43,6 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     logout()
     router.push("/")
   }
+
 
   return (
     <div className="min-h-screen flex">

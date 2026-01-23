@@ -1,13 +1,19 @@
 import type React from "react";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const geistSans = Geist({
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+})
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+})
 
 export const metadata: Metadata = {
   title: "DriveEase - Premium Car Rentals",
@@ -31,14 +37,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="font-sans antialiased m-3">
-        <Providers>
-          {children}
-          <Toaster />
-        </Providers>
-        {/* <Analytics /> */}
-      </body>
-    </html>
+      <html lang="en" suppressHydrationWarning>
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          <Providers>
+            {children}
+            <Toaster />
+          </Providers>
+        </body>
+      </html>
   );
 }

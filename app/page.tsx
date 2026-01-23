@@ -15,12 +15,8 @@ import {
   MapPin,
   Star,
   ChevronRight,
-  Sparkles,
-  Bot,
-  Zap,
 } from "lucide-react";
 import { ThreeBackground } from "@/components/three-background";
-import { AISearchBar } from "@/components/ai-search-bar";
 import { FeaturedCars } from "@/components/featured-cars";
 import { motion } from "framer-motion";
 
@@ -37,7 +33,7 @@ export default function HomePage() {
       name: "Sarah Johnson",
       rating: 5,
       comment:
-        "The AI assistant found me the perfect car in seconds — booking was seamless.",
+        "The advanced search found me the perfect car in seconds — booking was seamless.",
     },
     {
       name: "Michael Chen",
@@ -53,7 +49,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <ThreeBackground />
+      {/* <ThreeBackground /> */}
 
       <Navbar />
 
@@ -69,8 +65,8 @@ export default function HomePage() {
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-6">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 backdrop-blur-sm text-primary text-sm font-medium border border-primary/20">
-                  <Sparkles className="h-4 w-4" />
-                  AI-Powered Car Matching
+                  <Car className="h-4 w-4" />
+                  Premium Car Rental
                 </div>
 
                 <motion.h1
@@ -89,20 +85,12 @@ export default function HomePage() {
                   transition={{ delay: 0.15, duration: 0.6 }}
                   className="text-lg text-muted-foreground max-w-xl"
                 >
-                  DriveEase blends AI-driven recommendations with a curated
+                  DriveEase blends expert recommendations with a curated
                   fleet so you get the ideal car for your trip — no guesswork,
                   no hassle.
                 </motion.p>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25, duration: 0.6 }}
-                >
-                  <div className="bg-background/70 backdrop-blur-md rounded-xl p-4 border border-border/40 shadow-sm">
-                    <AISearchBar />
-                  </div>
-                </motion.div>
+
 
                 <div className="flex flex-wrap gap-3 mt-4">
                   <Button size="lg" asChild>
@@ -125,12 +113,12 @@ export default function HomePage() {
 
                   <div className="ml-auto hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="inline-flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-primary" />
-                      <span>Instant matches</span>
+                      <Shield className="h-4 w-4 text-primary" />
+                      <span>Fully Insured</span>
                     </div>
                     <div className="inline-flex items-center gap-2">
-                      <Bot className="h-4 w-4 text-primary" />
-                      <span>AI assistant</span>
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      <span>Secure Payment</span>
                     </div>
                   </div>
                 </div>
@@ -191,14 +179,14 @@ export default function HomePage() {
           <div className="container mx-auto px-4">
             <div className="text-center mb-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-3">
-                <Zap className="h-4 w-4" />
-                Powered by AI
+                <Car className="h-4 w-4" />
+                Modern Fleet
               </div>
               <h2 className="text-3xl font-bold">
-                Smart Car Rental Experience
+                Premium Car Rental Experience
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto mt-2">
-                AI recommendations, instant booking, and exceptional support —
+                Expert service, instant booking, and exceptional support —
                 all in one place.
               </p>
             </div>
@@ -207,12 +195,11 @@ export default function HomePage() {
               <Card className="border-primary/20 bg-background/80 backdrop-blur-sm hover:shadow-xl transition">
                 <CardContent className="pt-6 text-center">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center mx-auto mb-4">
-                    <Sparkles className="h-6 w-6 text-white" />
+                    <Car className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="font-semibold mb-2">AI Search</h3>
+                  <h3 className="font-semibold mb-2">Smart Search</h3>
                   <p className="text-sm text-muted-foreground">
-                    Tell the AI what you need — it delivers filtered, relevant
-                    results.
+                    Filter by make, model, price, or features to find your perfect match instantly.
                   </p>
                 </CardContent>
               </Card>
@@ -220,11 +207,11 @@ export default function HomePage() {
               <Card className="border-primary/20 bg-background/80 backdrop-blur-sm hover:shadow-xl transition">
                 <CardContent className="pt-6 text-center">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center mx-auto mb-4">
-                    <Bot className="h-6 w-6 text-white" />
+                    <Clock className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="font-semibold mb-2">24/7 Assistant</h3>
+                  <h3 className="font-semibold mb-2">24/7 Support</h3>
                   <p className="text-sm text-muted-foreground">
-                    Instant help and personalized recommendations whenever you
+                    Instant help and personalized assistance whenever you
                     need.
                   </p>
                 </CardContent>
@@ -235,10 +222,9 @@ export default function HomePage() {
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center mx-auto mb-4">
                     <Star className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="font-semibold mb-2">Personalized Picks</h3>
+                  <h3 className="font-semibold mb-2">Premium Fleet</h3>
                   <p className="text-sm text-muted-foreground">
-                    Suggestions that learn from your preferences and booking
-                    history.
+                    Top-tier vehicles maintained to the highest standards for your comfort.
                   </p>
                 </CardContent>
               </Card>
@@ -294,7 +280,7 @@ export default function HomePage() {
               {[
                 {
                   step: "1",
-                  title: "Tell AI What You Need",
+                  title: "Find Your Car",
                   desc: "Describe your ideal car or use filters to browse.",
                 },
                 {

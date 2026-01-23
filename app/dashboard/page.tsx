@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuthStore, useBookingsStore, useCarsStore } from "@/lib/store"
@@ -20,7 +21,22 @@ import {
   AlertCircle,
   FileText,
   ChevronRight,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 const statusConfig = {
   pending_payment: { label: "Pending Payment", color: "bg-warning text-warning-foreground", icon: Clock },
@@ -31,26 +47,42 @@ const statusConfig = {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, isAuthenticated } = useAuthStore()
-  const { bookings } = useBookingsStore()
+  const { user, isAuthenticated, checkSession } = useAuthStore()
+  const { bookings, fetchMyBookings } = useBookingsStore()
   const { cars } = useCarsStore()
+  const [isLoading, setIsLoading] = useState(true)
 
   const [activityFeed, setActivityFeed] = useState<any[]>([])
 
   useEffect(() => {
-    if (!isAuthenticated) router.push("/login")
-  }, [isAuthenticated, router])
+    const init = async () => {
 
+      if (!isAuthenticated || !user) {
+         await checkSession()
+      }
+      if (user) {
+         fetchMyBookings().catch(console.error)
+      }
+      setIsLoading(false)
+    }
+    init()
+  }, [isAuthenticated, user, checkSession, fetchMyBookings])
+
+  const [bookingToCancel, setBookingToCancel] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const { toast } = useToast();
+
+   // Activity Feed Logic
   useEffect(() => {
     if (!user) return
     const feed = bookings
-      .filter((b) => b.userId === user.userId)
+      .filter((b) => b.userId === user.userId) 
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .map((b) => {
         const car = cars.find((c) => c.carId === b.carId)
         return {
           id: b.bookingId,
-          message: `${car?.make} ${car?.model} is ${statusConfig[b.bookingStatus].label}`,
+          message: `${car?.make} ${car?.model} is ${statusConfig[b.bookingStatus]?.label || b.bookingStatus}`,
           time: new Date(b.updatedAt),
           status: b.bookingStatus,
         }
@@ -58,7 +90,47 @@ export default function DashboardPage() {
     setActivityFeed(feed)
   }, [bookings, cars, user])
 
-  if (!isAuthenticated || !user) return null
+  const handleCancelBooking = async () => {
+    if (!bookingToCancel) return;
+    try {
+        const res = await fetch(`/api/bookings/${bookingToCancel}/cancel`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: cancelReason || 'Customer cancelled' })
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Failed to cancel');
+        }
+
+        toast({ title: "Booking Cancelled", description: "Your booking has been cancelled." });
+        fetchMyBookings();
+        setBookingToCancel(null);
+        setCancelReason("");
+    } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  if (isLoading) {
+      return (
+          <div className="flex h-screen items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+      )
+  }
+
+  if (!isAuthenticated || !user) {
+       // Optional: render a "Not Authenticated" state or let Middleware handle redirect. 
+       // Since middleware should have caught this, this state might mean Sync failed.
+       return (
+           <div className="flex h-screen flex-col items-center justify-center gap-4">
+               <p className="text-muted-foreground">Unable to load profile.</p>
+               <Button onClick={() => window.location.reload()}>Retry</Button>
+           </div>
+       )
+  }
 
   const userBookings = bookings
     .filter((b) => b.userId === user.userId)
@@ -176,7 +248,7 @@ export default function DashboardPage() {
                             >
                               <div>
                                 <p className="font-medium">
-                                  {car?.make} {car?.carModel}
+                                  {car?.make} {car?.model}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
                                   {format(new Date(booking.startDate), "MMM d")} -{" "}
@@ -237,7 +309,7 @@ export default function DashboardPage() {
                               </div>
                               <div>
                                 <h4 className="font-semibold">
-                                  {car?.make} {car?.carModel}
+                                  {car?.make} {car?.model}
                                 </h4>
                                 <p className="text-sm text-muted-foreground">
                                   {format(new Date(booking.startDate), "MMM d")} -{" "}
@@ -265,6 +337,36 @@ export default function DashboardPage() {
                                     <ChevronRight className="h-4 w-4 ml-1" />
                                   </Link>
                                 </Button>
+                              )}
+                              {(booking.bookingStatus === 'confirmed' || booking.bookingStatus === 'pending_payment') && 
+                               new Date(booking.startDate) > new Date() && (
+                                <AlertDialog open={bookingToCancel === booking.bookingId} onOpenChange={(open) => !open && setBookingToCancel(null)}>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm" onClick={() => setBookingToCancel(booking.bookingId)}>Cancel</Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Cancel Booking?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to cancel this booking? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="py-2">
+                                        <Label>Reason (Optional)</Label>
+                                        <Input 
+                                            value={cancelReason} 
+                                            onChange={(e) => setCancelReason(e.target.value)} 
+                                            placeholder="Why are you cancelling?"
+                                        />
+                                    </div>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+                                      <AlertDialogAction onClick={handleCancelBooking} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                        Yes, Cancel
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               )}
                             </div>
                           </motion.div>

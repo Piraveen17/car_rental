@@ -24,7 +24,7 @@ import {
   ArrowLeft,
   Loader2,
 } from "lucide-react";
-import { BookingPayload } from "@/models/Booking";
+import { BookingPayload } from "@/types";
 
 export default function CarDetailsPage({
   params,
@@ -80,7 +80,10 @@ export default function CarDetailsPage({
         description: "You need to be logged in to book a car.",
         variant: "destructive",
       });
-      router.push("/login");
+      // Redirect to home or let middleware handle it if they try to proceed deeply
+      // or use window.location.href to trigger middleware logic if needed
+      // But ideally, we just show the toast. 
+      // Or we can use clerk's openSignIn() if available, but for now just showing toast is better than 404.
       return;
     }
 
@@ -151,7 +154,7 @@ export default function CarDetailsPage({
                 <div className="flex items-start justify-between flex-wrap gap-4">
                   <div>
                     <h1 className="text-3xl font-bold">
-                      {car.make} {car.carModel}
+                      {car.make} {car.model}
                     </h1>
                     <p className="text-lg text-muted-foreground">{car.year}</p>
                   </div>

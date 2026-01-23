@@ -1,53 +1,36 @@
-// app/api/payments/route.ts
-import { NextResponse } from "next/server";
-import { v4 as uuidv4 } from "uuid";
-import { DemoPayment } from "@/models/DemoPayment";
-import connectToDatabase from "@/lib/mongoose";
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function GET() {
+// POST /api/payments
+export async function POST(request: Request) {
   try {
-    await connectToDatabase();
-    const payments = await DemoPayment.find({});
-    return NextResponse.json(payments, { status: 200 });
-  } catch (error) {
-    console.error("GET /api/payments:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch payments" },
-      { status: 500 }
-    );
-  }
-}
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-export async function POST(req: Request) {
-  try {
-    await connectToDatabase();
-    const body = await req.json();
-
-    if (!body.bookingId || typeof body.amount !== "number") {
-      return NextResponse.json(
-        { error: "bookingId and amount required" },
-        { status: 400 }
-      );
+    if (!user) {
+       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const paymentId = uuidv4();
-    const newPayment = new DemoPayment({
-      id: uuidv4(),
-      bookingId: body.bookingId,
-      paymentId,
-      amount: body.amount,
-      status: "pending",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    const body = await request.json();
 
-    const saved = await newPayment.save();
-    return NextResponse.json(saved, { status: 201 });
-  } catch (error) {
-    console.error("POST /api/payments:", error);
-    return NextResponse.json(
-      { error: "Failed to initiate payment" },
-      { status: 500 }
-    );
+    const { data: payment, error } = await supabase
+      .from('payments')
+      .insert({
+         booking_id: body.bookingId,
+         amount: body.amount,
+         currency: body.currency || 'USD',
+         status: 'pending',
+         method: body.method,
+         user_id: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json(payment, { status: 201 });
+  } catch (error: any) {
+    console.error("Error creating payment:", error);
+    return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
   }
 }

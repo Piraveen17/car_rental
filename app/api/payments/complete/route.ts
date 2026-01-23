@@ -1,24 +1,47 @@
-// app/api/payments/complete/route.ts
-import { NextResponse } from "next/server";
-import {DemoPayment} from "@/models/DemoPayment";
-import connectToDatabase from "@/lib/mongoose";
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function POST(req: Request) {
+// POST /api/payments/complete
+export async function POST(request: Request) {
   try {
-    await connectToDatabase();
-    const { paymentId } = await req.json() as { paymentId?: string };
-    if (!paymentId) return NextResponse.json({ error: "paymentId required" }, { status: 400 });
+    const supabase = await createClient();
+    const { paymentId } = await request.json();
 
-    const payment = await DemoPayment.findOne({ paymentId });
-    if (!payment) return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+    // 1. Mark payment as completed
+    const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .update({ status: 'completed' })
+        .eq('id', paymentId)
+        .select()
+        .single();
 
-    payment.status = "paid";
-    payment.updatedAt = new Date();
-    await payment.save();
+    if (paymentError || !payment) {
+      if (paymentError?.code === 'PGRST116' || !payment) {
+          return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
+      }
+      throw paymentError;
+    }
 
-    return NextResponse.json({ success: true, payment }, { status: 200 });
-  } catch (error) {
-    console.error("POST /api/payments/complete:", error);
-    return NextResponse.json({ error: "Failed to complete payment" }, { status: 500 });
+    // 2. Update booking status
+    const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .update({ 
+            payment_status: 'paid',
+            status: 'confirmed' 
+        })
+        .eq('id', payment.booking_id)
+        .select()
+        .single();
+
+    if (bookingError) {
+         // Log critical error: Payment succeeded but booking update failed
+         console.error('CRITICAL: Payment completed but booking update failed', bookingError);
+         return NextResponse.json({ error: 'Booking missing or update failed' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error completing payment:", error);
+    return NextResponse.json({ error: error.message || 'Payment completion failed' }, { status: 500 });
   }
 }

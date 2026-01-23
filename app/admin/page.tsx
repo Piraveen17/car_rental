@@ -11,8 +11,9 @@ import {
   useCarsStore,
   useBookingsStore,
   useMaintenanceStore,
+  useUsersStore,
 } from "@/lib/store";
-import { users } from "@/lib/data";
+import { useEffect } from "react";
 import {
   Car,
   Calendar,
@@ -24,9 +25,17 @@ import {
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
-  const { cars } = useCarsStore();
-  const { bookings } = useBookingsStore();
-  const { records: maintenanceRecords } = useMaintenanceStore();
+  const { cars, fetchCars } = useCarsStore();
+  const { bookings, fetchBookings } = useBookingsStore();
+  const { records: maintenanceRecords, fetchRecords } = useMaintenanceStore();
+  const { users, fetchUsers } = useUsersStore();
+
+  useEffect(() => {
+    fetchCars();
+    fetchBookings();
+    fetchRecords();
+    fetchUsers();
+  }, [fetchCars, fetchBookings, fetchRecords, fetchUsers]);
 
   const totalRevenue = bookings
     .filter((b) => b.paymentStatus === "paid")
@@ -43,7 +52,7 @@ export default function AdminDashboardPage() {
   const activeCars = cars.filter((c) => c.status === "active").length;
   const maintenanceCars = cars.filter((c) => c.status === "maintenance").length;
 
-  const totalCustomers = users.filter((u) => u.role === "customer").length;
+  const totalCustomers = users.filter((u) => u.roles?.includes("customer")).length;
 
   const pendingMaintenance = maintenanceRecords.filter(
     (m) => m.status === "pending"
@@ -190,7 +199,7 @@ export default function AdminDashboardPage() {
             <div className="space-y-3">
               {recentBookings.map((booking, index) => {
                 const car = cars.find((c) => c.carId === booking.carId);
-                const customer = users.find((u) => u.id === booking.userId);
+                const customer = users.find((u) => u.userId === booking.userId);
                 return (
                   <div
                     key={booking.bookingId}
@@ -198,7 +207,7 @@ export default function AdminDashboardPage() {
                   >
                     <div>
                       <p className="font-medium">
-                        {car?.make} {car?.carModel}
+                        {car?.make} {car?.model}
                       </p>
                       <p className="text-muted-foreground">{customer?.name}</p>
                     </div>

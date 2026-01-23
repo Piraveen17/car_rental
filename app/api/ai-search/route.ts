@@ -1,6 +1,6 @@
 import { generateObject } from "ai"
 import { z } from "zod"
-import { cars } from "@/lib/data"
+import { GATEWAY_URL } from "@/lib/config";
 
 const searchResultSchema = z.object({
   matchingCarIds: z.array(z.string()).describe("IDs of cars that match the search criteria"),
@@ -11,8 +11,19 @@ const searchResultSchema = z.object({
 export async function POST(req: Request) {
   const { query } = await req.json()
 
-  const carsList = cars.map((car) => ({
-    id: car.id,
+  // Fetch real cars from Gateway
+  let cars = [];
+  try {
+      const res = await fetch(`${GATEWAY_URL}/cars`, { cache: 'no-store' });
+      if (res.ok) {
+          cars = await res.json();
+      }
+  } catch (err) {
+      console.error("Failed to fetch cars for AI search", err);
+  }
+
+  const carsList = cars.map((car: any) => ({
+    id: car.carId || car._id || car.id, // Adaptation
     name: `${car.year} ${car.make} ${car.model}`,
     price: car.pricePerDay,
     seats: car.seats,
@@ -20,7 +31,7 @@ export async function POST(req: Request) {
     fuelType: car.fuelType,
     location: car.location,
     features: car.features,
-    status: car.status,
+    status: car.status || "active", // default active if missing
   }))
 
   const { object } = await generateObject({

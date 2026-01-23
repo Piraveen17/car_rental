@@ -1,70 +1,81 @@
-// app/api/maintenance/[id]/route.ts
-import { NextResponse } from "next/server";
-import Maintenance from "@/models/Maintenance";
-import connectToDatabase from "@/lib/mongoose";
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await connectToDatabase();
-    const rec = await Maintenance.findOne({ id: params.id });
-    if (!rec)
-      return NextResponse.json({ error: "Record not found" }, { status: 404 });
-    return NextResponse.json(rec, { status: 200 });
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const role = user.user_metadata?.role || 'customer';
+    if (!['admin', 'staff'].includes(role)) {
+         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+
+    if (body.status) {
+        if (!['pending', 'fixed'].includes(body.status)) {
+             if (body.status === 'completed' || body.status === 'fixed') body.status = 'fixed';
+             else body.status = 'pending';
+        }
+    }
+
+    const { data: updatedRecord, error } = await supabase
+        .from('maintenance')
+        .update({
+            status: body.status, 
+            description: body.description || body.issue, 
+            cost: body.cost,
+            date: body.date,
+            type: body.type,
+            car_id: body.car_id
+        })
+        .eq('id', id)
+        .select()
+        .single();
+    
+    if (error) {
+         if (error.code === 'PGRST116') return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+         throw error;
+    }
+
+    return NextResponse.json({
+        ...updatedRecord,
+        recordId: updatedRecord.id,
+        issue: updatedRecord.description
+    });
   } catch (error) {
-    console.error("GET /api/maintenance/[id]:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch maintenance record" },
-      { status: 500 }
-    );
+    console.error("Error updating maintenance:", error);
+    return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
   }
 }
 
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await connectToDatabase();
-    const id = req.url.split("/").pop();
-    const updates = await req.json();
-    const updated = await Maintenance.findOneAndUpdate(
-      { recordId: id },
-      { ...updates, updatedAt: new Date() },
-      { new: true }
-    );
-    if (!updated)
-      return NextResponse.json({ error: "Record not found" }, { status: 404 });
-    return NextResponse.json(updated, { status: 200 });
-  } catch (error) {
-    console.error("PUT /api/maintenance/[id]:", error);
-    return NextResponse.json(
-      { error: "Failed to update maintenance record" },
-      { status: 500 }
-    );
-  }
-}
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await connectToDatabase();
-    const deleted = await Maintenance.findOneAndDelete({ id: params.id });
-    if (!deleted)
-      return NextResponse.json({ error: "Record not found" }, { status: 404 });
-    return NextResponse.json(
-      { message: "Maintenance record deleted" },
-      { status: 200 }
-    );
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const role = user.user_metadata?.role || 'customer';
+    if (role !== 'admin') { // Only admin delete
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const { error } = await supabase
+        .from('maintenance')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("DELETE /api/maintenance/[id]:", error);
-    return NextResponse.json(
-      { error: "Failed to delete maintenance record" },
-      { status: 500 }
-    );
+     console.error("Error deleting maintenance:", error);
+     return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
   }
 }

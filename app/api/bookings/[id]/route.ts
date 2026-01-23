@@ -1,68 +1,49 @@
-// app/api/bookings/[id]/route.ts
-import { NextResponse } from "next/server";
-import Booking from "@/models/Booking";
-import connectToDatabase from "@/lib/mongoose";
-import { id } from "date-fns/locale";
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await connectToDatabase();
-    const booking = await Booking.findOne({ id: params.id });
-    if (!booking)
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-    return NextResponse.json(booking, { status: 200 });
-  } catch (error) {
-    console.error("GET /api/bookings/[id]:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch booking" },
-      { status: 500 }
-    );
-  }
+// PATCH /api/bookings/[id] (Admin/Staff)
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    console.log("PUT called with params", params);
+    // You cannot destructure params directly here if it's a promise in newer Next.js versions, 
+    // but in Page Router / older App Router params is sync. 
+    // Typescript signature says it's { params: { id: string } }.
+  return PATCH(request, { params })
 }
 
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await connectToDatabase();
-    const updates = await req.json();
-    const id = req.url.split("/").pop();
-    const updated = await Booking.findOneAndUpdate(
-      { bookingId: id },
-      { ...updates, updatedAt: new Date() },
-      { new: true }
-    );
-    if (!updated)
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-    return NextResponse.json(updated, { status: 200 });
-  } catch (error) {
-    console.error("PUT /api/bookings/[id]:", error);
-    return NextResponse.json(
-      { error: "Failed to update booking" },
-      { status: 500 }
-    );
-  }
-}
+    const { id } = await params;
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await connectToDatabase();
-    const deleted = await Booking.findOneAndDelete({ id: params.id });
-    if (!deleted)
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-    return NextResponse.json({ message: "Booking deleted" }, { status: 200 });
-  } catch (error) {
-    console.error("DELETE /api/bookings/[id]:", error);
-    return NextResponse.json(
-      { error: "Failed to delete booking" },
-      { status: 500 }
-    );
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const role = user.user_metadata?.role || 'customer';
+    
+    // Check permissions - Admin/Staff can update any
+    if (!['admin', 'staff'].includes(role)) {
+         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await request.json();
+
+    const { data: updatedBooking, error } = await supabase
+        .from('bookings')
+        .update(body)
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) {
+        if (error.code === 'PGRST116') { // No rows returned/found
+            return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+        }
+        throw error;
+    }
+
+    return NextResponse.json(updatedBooking);
+  } catch (error: any) {
+    console.error("Error updating booking:", error);
+    return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 });
   }
 }

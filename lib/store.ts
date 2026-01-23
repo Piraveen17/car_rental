@@ -1,13 +1,12 @@
-// stores.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
-import { users } from "./data"; // local seed user array (assumed to use `id` field)
-import type { IUser } from "@/models/User";
-import type { CarPayload, ICar } from "@/models/Car";
-import type { BookingPayload, IBooking } from "@/models/Booking";
-import type { IMaintenance } from "@/models/Maintenance";
+import type { IUser } from "@/types";
+import type { CarPayload, ICar } from "@/types";
+import type { BookingPayload, IBooking } from "@/types";
+import type { IMaintenance } from "@/types";
 import type { DemoPayment, MaintenancePayload } from "@/types";
+import { apiClient } from "@/lib/api-client";
 
 /**
  * NOTE: This file expects your model interfaces (IUser, ICar, IBooking, IMaintenance)
@@ -22,9 +21,11 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateProfile: (updates: Partial<IUser>) => void;
-  /** optional: load existing users from local seed - not persisted here */
+  isHydrated: boolean;
+  setHydrated: () => void;
+  checkSession: () => Promise<void>;
 }
 
 interface CarsState {
@@ -38,6 +39,7 @@ interface CarsState {
 interface BookingsState {
   bookings: IBooking[];
   fetchBookings: () => Promise<void>;
+  fetchMyBookings: () => Promise<void>;
   addBooking: (booking: BookingPayload) => Promise<string>;
   updateBooking: (id: string, updates: BookingPayload) => Promise<void>;
   getBookingsForUser: (userId: string) => IBooking[];
@@ -66,80 +68,106 @@ interface ThemeState {
 
 /* ---------------------- Auth store (persisted) ---------------------- */
 
+import { createClient } from "@/lib/supabase/client";
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
+      isHydrated: false,
 
-      /**
-       * Simple login using local `users` seed array.
-       * Real app: call backend auth endpoint and set tokens accordingly.
-       */
-      login: async (email: string, _password: string) => {
-        const found = users.find((u: IUser) => u.email === email && u.isActive);
-        if (found) {
-          set({ user: found, isAuthenticated: true });
-          return true;
+      login: async (email, password) => {
+        const supabase = createClient();
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+            console.error(error.message);
+            return false;
         }
-        return false;
-      },
-
-      register: async (name: string, email: string, _password: string) => {
-        const exists = users.find((u: IUser) => u.email === email);
-        if (exists) return false;
-
-        const newUser: IUser = {
-          userId: uuidv4(),
-          name,
-          email,
-          role: "customer",
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as unknown as IUser; // cast if your IUser has optional fields
-
-        users.push(newUser);
-        set({ user: newUser, isAuthenticated: true });
+        await get().checkSession();
         return true;
       },
 
-      logout: () => set({ user: null, isAuthenticated: false }),
+      register: async (name, email, password) => {
+        try {
+          // Call API to create user with correct role
+          const res = await apiClient.post("/auth/register", { name, email, password });
+          
+          if (!res.ok) {
+            const errorData = await res.json();
+            console.error("Registration failed:", errorData.error);
+            return false;
+          }
 
+          // Auto-login after successful registration
+          return await get().login(email, password);
+        } catch (error: any) {
+          console.error("Registration error:", error);
+          return false;
+        }
+      },
+
+      logout: async () => {
+         const supabase = createClient();
+         await supabase.auth.signOut();
+         set({ user: null, isAuthenticated: false });
+      },
+      
       updateProfile: (updates: Partial<IUser>) => {
         const current = get().user;
         if (!current) return;
-
-        const updated: IUser = {
-          ...current,
-          ...updates,
-          updatedAt: new Date(),
-        } as IUser;
-        // update local seeded users array if present
-        const idx = users.findIndex((u: IUser) => u.userId === current.userId);
-        if (idx !== -1) users[idx] = { ...users[idx], ...updated };
-
+        const updated = { ...current, ...updates, updatedAt: new Date() } as IUser;
         set({ user: updated });
+      },
+      setHydrated: () => set({ isHydrated: true }),
+      
+      checkSession: async () => {
+         const supabase = createClient();
+         const { data: { user } } = await supabase.auth.getUser();
+         
+         if (user) {
+             const mappedUser: IUser = {
+                 userId: user.id,
+                 clerkUserId: user.id, // For compat
+                 email: user.email || "",
+                 name: user.user_metadata?.name || "",
+                 role: user.user_metadata?.role || "customer",
+                 phone: user.phone || "",
+                 isActive: !!user.email_confirmed_at, // Use email confirmation as proxy for active
+                 createdAt: new Date(user.created_at),
+                 updatedAt: new Date(user.last_sign_in_at || new Date())
+             };
+             set({ user: mappedUser, isAuthenticated: true });
+         } else {
+             set({ user: null, isAuthenticated: false });
+         }
       },
     }),
     {
       name: "auth-storage",
-      // optionally: getStorage: () => sessionStorage,
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated();
+        state?.checkSession();
+      },
     }
   )
 );
 
+
 /* ---------------------- Cars store ---------------------- */
+// helper: normalize server car -> ICar used by the UI
 // helper: normalize server car -> ICar used by the UI
 function normalizeCarFromServer(c: any): ICar {
   return {
     ...c,
-    // prefer explicit carId, then id, then _id; fallback generate (shouldn't be necessary normally)
-    carId: c.carId ?? c._id ?? uuidv4(),
+    // Map snake_case to camelCase
+    car_id: c.car_id ?? c.id ?? c._id ?? uuidv4(),
+    pricePerDay: c.pricePerDay ?? c.price_per_day ?? 0,
+    fuelType: c.fuelType ?? c.fuel_type ?? "Unknown",
+    
     // ensure dates are Date objects in client state
-    createdAt: c.createdAt ? new Date(c.createdAt) : new Date(),
-    updatedAt: c.updatedAt ? new Date(c.updatedAt) : new Date(),
-    // keep other properties as-is
+    createdAt: c.createdAt ? new Date(c.createdAt) : (c.created_at ? new Date(c.created_at) : new Date()),
+    updatedAt: c.updatedAt ? new Date(c.updatedAt) : (c.updated_at ? new Date(c.updated_at) : new Date()),
   } as ICar;
 }
 
@@ -148,7 +176,7 @@ export const useCarsStore = create<CarsState>((set, get) => ({
 
   fetchCars: async () => {
     try {
-      const res = await fetch("/api/cars");
+      const res = await apiClient.get("/cars");
       if (!res.ok) throw new Error(`Failed to fetch cars: ${res.statusText}`);
       const data: any = await res.json();
       const cars = Array.isArray(data) ? data.map(normalizeCarFromServer) : [];
@@ -160,19 +188,18 @@ export const useCarsStore = create<CarsState>((set, get) => ({
   },
 
   addCar: async (carData: CarPayload) => {
-    const localNewCar: ICar = {
-      ...carData,
-      carId: uuidv4(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as ICar;
 
     try {
-      const res = await fetch("/api/cars", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(localNewCar),
-      });
+      const newCar: ICar = {
+        ...carData,
+        car_id: uuidv4(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as ICar;
+
+      console.log("Add car API request:", newCar);
+      const res = await apiClient.post("/cars", newCar);
+      console.log("Add car API response:", res);
 
       if (res.ok) {
         const saved = await res.json();
@@ -180,34 +207,35 @@ export const useCarsStore = create<CarsState>((set, get) => ({
         set((state) => ({ cars: [...state.cars, normalized] }));
         return normalized;
       } else {
-        // server returned non-ok, fallback to local
         throw new Error(`Server returned ${res.status}`);
       }
     } catch (error) {
       console.info("Add car API failed; saving locally.", error);
-      set((state) => ({ cars: [...state.cars, localNewCar] }));
-      return localNewCar;
+      const newCar: ICar = {
+        ...carData,
+        car_id: uuidv4(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as ICar;
+      set((state) => ({ cars: [...state.cars, newCar] }));
+      return newCar;
     }
+
   },
 
-  // updated updateCar — apply server response if available, else fallback local update
   updateCar: async (
-    carId: string,
+    car_id: string,
     updates: Partial<CarPayload>
   ): Promise<void> => {
     try {
-      const res = await fetch(`/api/cars/${carId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
+      const res = await apiClient.put(`/cars/${car_id}`, updates);
 
       if (res.ok) {
         const saved = await res.json();
         const normalized = normalizeCarFromServer(saved);
         set((state) => ({
           cars: state.cars.map((c) =>
-            c.carId === carId
+            c.car_id === car_id
               ? {
                   ...c,
                   ...normalized,
@@ -218,10 +246,9 @@ export const useCarsStore = create<CarsState>((set, get) => ({
         }));
         return;
       } else if (res.status === 404) {
-        // resource not found on server — still apply local update
         set((state) => ({
           cars: state.cars.map((c) =>
-            c.carId === carId ? { ...c, ...updates, updatedAt: new Date() } : c
+            c.car_id === car_id ? { ...c, ...updates, updatedAt: new Date() } : c
           ) as ICar[],
         }));
       } else {
@@ -233,18 +260,16 @@ export const useCarsStore = create<CarsState>((set, get) => ({
       console.info("Update car API failed; will update locally.", err);
       set((state) => ({
         cars: state.cars.map((c) =>
-          c.carId === carId ? { ...c, ...updates, updatedAt: new Date() } : c
+          c.car_id === car_id ? { ...c, ...updates, updatedAt: new Date() } : c
         ) as ICar[],
       }));
       return;
     }
   },
 
-  deleteCar: async (carId: string) => {
+  deleteCar: async (car_id: string) => {
     try {
-      const res = await fetch(`/api/cars/${carId}`, {
-        method: "DELETE",
-      });
+      const res = await apiClient.delete(`/cars/${car_id}`);
       if (!res.ok && res.status !== 404) {
         throw new Error(
           `Failed to delete car: ${res.status} ${res.statusText}`
@@ -254,26 +279,55 @@ export const useCarsStore = create<CarsState>((set, get) => ({
       console.info("Delete car API failed; removing locally.", err);
     }
 
-    set((state) => ({ cars: state.cars.filter((c) => c.carId !== carId) }));
+    set((state) => ({ cars: state.cars.filter((c) => c.car_id !== car_id) }));
   },
 }));
 
 /* ---------------------- Bookings store ---------------------- */
+// helper: normalize server booking -> IBooking used by the UI
+function normalizeBookingFromServer(b: any): IBooking {
+  return {
+    ...b,
+    bookingId: b.bookingId ?? b.id ?? b._id ?? uuidv4(),
+    // handle field naming mismatch
+    totalAmount: b.totalAmount ?? b.totalPrice ?? 0,
+    // ensure dates are Date objects
+    startDate: b.startDate ? new Date(b.startDate) : new Date(),
+    endDate: b.endDate ? new Date(b.endDate) : new Date(),
+    createdAt: b.createdAt ? new Date(b.createdAt) : new Date(),
+    updatedAt: b.updatedAt ? new Date(b.updatedAt) : new Date(),
+  } as IBooking;
+}
 
 export const useBookingsStore = create<BookingsState>((set, get) => ({
   bookings: [],
 
   fetchBookings: async () => {
+    
     try {
-      const res = await fetch("/api/bookings");
+      const res = await apiClient.get("/bookings");
       if (!res.ok)
         throw new Error(`Failed to fetch bookings: ${res.statusText}`);
-      const data: IBooking[] = await res.json();
-      set({ bookings: Array.isArray(data) ? data : [] });
+      const data = await res.json();
+      const normalizedData = Array.isArray(data) ? data.map(normalizeBookingFromServer) : [];
+      set({ bookings: normalizedData });
     } catch (error) {
       console.error("Error fetching bookings:", error);
       throw error;
     }
+  },
+
+  fetchMyBookings: async () => {
+      try {
+        const res = await apiClient.get("/bookings/my-bookings");
+        if (!res.ok) throw new Error(`Failed to fetch my bookings: ${res.statusText}`);
+        const data = await res.json();
+        const normalizedData = Array.isArray(data) ? data.map(normalizeBookingFromServer) : [];
+        set({ bookings: normalizedData });
+      } catch (error) {
+          console.error("Error fetching my bookings:", error);
+          throw error;
+      }
   },
 
   addBooking: async (bookingData) => {
@@ -285,16 +339,13 @@ export const useBookingsStore = create<BookingsState>((set, get) => ({
     } as IBooking;
 
     try {
-      const res = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newBooking),
-      });
+      const res = await apiClient.post("/bookings", newBooking);
 
       if (res.ok) {
         const saved = await res.json();
-        set((s) => ({ bookings: [...s.bookings, saved] }));
-        return saved.bookingId;
+        const normalizedSaved = normalizeBookingFromServer(saved);
+        set((s) => ({ bookings: [...s.bookings, normalizedSaved] }));
+        return normalizedSaved.bookingId;
       }
     } catch (err) {
       console.info("Booking API not available; saving locally.", err);
@@ -306,11 +357,7 @@ export const useBookingsStore = create<BookingsState>((set, get) => ({
 
   updateBooking: async (bookingId, updates) => {
     try {
-      const res = await fetch(`/api/bookings/${bookingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
+      const res = await apiClient.put(`/bookings/${bookingId}`, updates);
       if (!res.ok && res.status !== 404) {
         throw new Error(`Failed to update booking: ${res.statusText}`);
       }
@@ -338,8 +385,9 @@ export const useMaintenanceStore = create<MaintenanceState>((set, get) => ({
   records: [],
 
   fetchRecords: async () => {
+
     try {
-      const res = await fetch("/api/maintenance");
+      const res = await apiClient.get("/maintenance");
       if (!res.ok)
         throw new Error(`Failed to fetch maintenance: ${res.statusText}`);
       const data: IMaintenance[] = await res.json();
@@ -359,11 +407,7 @@ export const useMaintenanceStore = create<MaintenanceState>((set, get) => ({
     } as IMaintenance;
 
     try {
-      const res = await fetch("/api/maintenance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newRecord),
-      });
+      const res = await apiClient.post("/maintenance", newRecord);
 
       if (res.ok) {
         const saved = await res.json();
@@ -380,11 +424,7 @@ export const useMaintenanceStore = create<MaintenanceState>((set, get) => ({
 
   updateRecord: async (recordId, updates) => {
     try {
-      const res = await fetch(`/api/maintenance/${recordId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
+      const res = await apiClient.patch(`/maintenance/${recordId}`, updates); // Changed to patch
       if (!res.ok && res.status !== 404) {
         throw new Error(
           `Failed to update maintenance record: ${res.statusText}`
@@ -405,9 +445,7 @@ export const useMaintenanceStore = create<MaintenanceState>((set, get) => ({
 
   deleteRecord: async (recordId) => {
     try {
-      const res = await fetch(`/api/maintenance/${recordId}`, {
-        method: "DELETE",
-      });
+      const res = await apiClient.delete(`/maintenance/${recordId}`);
       if (!res.ok && res.status !== 404) {
         throw new Error(
           `Failed to delete maintenance record: ${res.statusText}`
@@ -424,6 +462,27 @@ export const useMaintenanceStore = create<MaintenanceState>((set, get) => ({
       records: state.records.filter((r) => r.recordId !== recordId),
     }));
   },
+}));
+
+interface UsersState {
+  users: IUser[];
+  fetchUsers: () => Promise<void>;
+}
+
+export const useUsersStore = create<UsersState>((set) => ({
+  users: [],
+  fetchUsers: async () => {
+
+    try {
+      const res = await apiClient.get("/users");
+      if (res.ok) {
+        const data = await res.json();
+        set({ users: Array.isArray(data) ? data : [] });
+      }
+    } catch (error) {
+       console.error("Failed to fetch users", error);
+    }
+  }
 }));
 
 /* ---------------------- Payments store ---------------------- */
@@ -443,11 +502,7 @@ export const usePaymentsStore = create<PaymentsState>((set, get) => ({
     } as DemoPayment;
 
     try {
-      const res = await fetch("/api/payments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newPayment),
-      });
+      const res = await apiClient.post("/payments", newPayment);
 
       if (res.ok) {
         const saved = await res.json();
@@ -464,11 +519,7 @@ export const usePaymentsStore = create<PaymentsState>((set, get) => ({
 
   completePayment: async (paymentId) => {
     try {
-      const res = await fetch("/api/payments/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId }),
-      });
+      const res = await apiClient.post("/payments/complete", { paymentId });
 
       if (res.ok) {
         set((state) => ({

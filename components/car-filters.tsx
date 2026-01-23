@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import type { CarFilters, TransmissionType } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Filter, X } from "lucide-react"
-import { getUniqueMakes, getUniqueLocations } from "@/lib/data"
+import { useCarsStore } from "@/lib/store"
 
 interface CarFiltersProps {
   filters: CarFilters
@@ -17,8 +17,10 @@ interface CarFiltersProps {
 
 export function CarFiltersComponent({ filters, onFiltersChange }: CarFiltersProps) {
   const [open, setOpen] = useState(false)
-  const makes = getUniqueMakes()
-  const locations = getUniqueLocations()
+  const { cars } = useCarsStore()
+  
+  const makes = useMemo(() => Array.from(new Set(cars.map(c => c.make))), [cars])
+  const locations = useMemo(() => Array.from(new Set(cars.map(c => c.location))), [cars])
 
   const handleReset = () => {
     onFiltersChange({})

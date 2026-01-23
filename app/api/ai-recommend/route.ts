@@ -1,6 +1,7 @@
 import { generateObject } from "ai"
+import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
-import { cars, bookings } from "@/lib/data"
+import { GATEWAY_URL } from "@/lib/config";
 
 const recommendationSchema = z.object({
   recommendations: z
@@ -19,25 +20,40 @@ const recommendationSchema = z.object({
 export async function POST(req: Request) {
   const { userId, preferences } = await req.json()
 
-  // Get user's booking history
-  const userBookings = bookings.filter((b) => b.userId === userId)
-  const previousCarIds = userBookings.map((b) => b.carId)
-  const previousCars = cars.filter((c) => previousCarIds.includes(c.id))
+  let cars: any[] = [];
+  let bookings: any[] = [];
 
-  const activeCars = cars.filter((c) => c.status === "active")
+  try {
+      const [carsRes, bookingsRes] = await Promise.all([
+        fetch(`${GATEWAY_URL}/cars`, { cache: 'no-store' }),
+        fetch(`${GATEWAY_URL}/bookings`, { cache: 'no-store' })
+      ]);
+      if (carsRes.ok) cars = await carsRes.json();
+      if (bookingsRes.ok) bookings = await bookingsRes.json();
+  } catch (err) {
+      console.error("Failed to fetch data for recommendations", err);
+  }
+
+  // Get user's booking history
+  const userBookings = bookings.filter((b: any) => b.userId === userId)
+  const previousCarIds = userBookings.map((b: any) => b.carId)
+  // cars might use carId or _id. normalize.
+  const previousCars = cars.filter((c: any) => previousCarIds.includes(c.carId || c._id || c.id))
+
+  const activeCars = cars.filter((c: any) => (c.status || "active") === "active")
 
   const { object } = await generateObject({
-    model: "openai/gpt-4o-mini",
+    model: openai("gpt-4o-mini"),
     schema: recommendationSchema,
     prompt: `You are an AI car recommendation engine for a rental service.
 
 User Preferences: ${JSON.stringify(preferences || {})}
 
 User's Previous Rentals:
-${previousCars.map((c) => `- ${c.year} ${c.make} ${c.model} ($${c.pricePerDay}/day)`).join("\n") || "No previous rentals"}
+${previousCars.map((c: any) => `- ${c.year} ${c.make} ${c.model} ($${c.pricePerDay}/day)`).join("\n") || "No previous rentals"}
 
 Available Cars:
-${activeCars.map((c) => `ID: ${c.id}, ${c.year} ${c.make} ${c.model}, $${c.pricePerDay}/day, ${c.seats} seats, ${c.transmission}, ${c.fuelType}, Location: ${c.location}`).join("\n")}
+${activeCars.map((c: any) => `ID: ${c.carId || c._id || c.id}, ${c.year} ${c.make} ${c.model}, $${c.pricePerDay}/day, ${c.seats} seats, ${c.transmission}, ${c.fuelType}, Location: ${c.location}`).join("\n")}
 
 Generate personalized car recommendations based on:
 1. User's stated preferences (if any)

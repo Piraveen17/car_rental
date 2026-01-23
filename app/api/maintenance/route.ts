@@ -1,50 +1,86 @@
-// app/api/maintenance/route.ts
-import { NextResponse } from "next/server";
-import { v4 as uuidv4 } from "uuid";
-import Maintenance from "@/models/Maintenance";
-import connectToDatabase from "@/lib/mongoose";
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function GET() {
+// GET /api/maintenance (Admin/Staff only)
+export async function GET(request: Request) {
   try {
-    await connectToDatabase();
-    const records = await Maintenance.find({});
-    return NextResponse.json(records, { status: 200 });
-  } catch (error) {
-    console.error("GET /api/maintenance:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch maintenance records" },
-      { status: 500 }
-    );
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const role = user.user_metadata?.role || 'customer';
+    if (!['admin', 'staff'].includes(role)) {
+         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const { data: records, error } = await supabase
+      .from('maintenance')
+      .select('*, cars (make, model)')
+      .order('date', { ascending: false });
+    
+    if (error) throw error;
+
+    const formattedRecords = (records || []).map(r => ({
+        ...r,
+        recordId: r.id, // Map id to recordId for client compatibility
+        issue: r.description // Map description to issue for client compatibility
+    }));
+
+    return NextResponse.json(formattedRecords);
+  } catch (error: any) {
+    console.error("Error fetching maintenance:", error);
+    return NextResponse.json({ error: 'Failed to fetch maintenance records' }, { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+// POST /api/maintenance (Admin/Staff)
+export async function POST(request: Request) {
   try {
-    await connectToDatabase();
-    const body = await req.json();
-    console.log(body);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!body.carId || !body.issue || !body.date) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const role = user.user_metadata?.role || 'customer';
+    if (!['admin', 'staff'].includes(role)) {
+         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const newRecord = new Maintenance({
-      ...body,
-      id: uuidv4(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    const body = await request.json();
+    
+    // Sanitize status to ensure it matches DB constraint (pending | fixed)
+    let status = body.status || 'pending';
+    if (!['pending', 'fixed'].includes(status)) {
+        if (status === 'completed' || status === 'fixed') status = 'fixed';
+        else status = 'pending'; // Default everything else (scheduled, in_progress) to pending
+    }
 
-    const saved = await newRecord.save();
-    return NextResponse.json(saved, { status: 201 });
-  } catch (error) {
-    console.error("POST /api/maintenance:", error);
-    return NextResponse.json(
-      { error: "Failed to create maintenance record" },
-      { status: 500 }
-    );
+    const { data: record, error } = await supabase
+      .from('maintenance')
+      .insert({
+          car_id: body.car_id,
+          type: body.type || 'repair', // Default to repair
+          description: body.issue || body.description,
+          date: body.date,
+          cost: body.cost,
+          status: status
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({
+        ...record,
+        recordId: record.id,
+        issue: record.description
+    }, { status: 201 });
+  } catch (error: any) {
+    console.error("Error creating maintenance:", error);
+    return NextResponse.json({ error: 'Failed to create record', details: error.message }, { status: 500 });
   }
 }

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CarQuickView } from "@/components/car-quick-view";
 import { Users, Fuel, Settings2, MapPin, Eye } from "lucide-react";
-import { ICar } from "@/models/Car";
+import { ICar } from "@/types";
 
 interface CarCardProps {
   car: ICar;
@@ -53,7 +53,7 @@ export function CarCard({ car }: CarCardProps) {
           <div className="flex items-start justify-between mb-2">
             <div>
               <h3 className="font-semibold text-lg">
-                {car.make} {car.carModel}
+                {car.make} {car.model}
               </h3>
               <p className="text-sm text-muted-foreground">{car.year}</p>
             </div>

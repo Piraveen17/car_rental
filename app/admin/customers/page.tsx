@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { users } from "@/lib/data"
-import { useBookingsStore } from "@/lib/store"
+import { useState, useEffect } from "react"
+import { useBookingsStore, useUsersStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -13,9 +12,15 @@ import { format } from "date-fns"
 import { Search, UserCheck, UserX } from "lucide-react"
 
 export default function AdminCustomersPage() {
-  const { bookings } = useBookingsStore()
+  const { bookings, fetchBookings } = useBookingsStore()
+  const { users, fetchUsers } = useUsersStore()
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState("")
+
+  useEffect(() => {
+    fetchBookings()
+    fetchUsers()
+  }, [fetchBookings, fetchUsers])
 
   const customers = users.filter((u) => u.role === "customer")
 
@@ -40,14 +45,11 @@ export default function AdminCustomersPage() {
   }
 
   const toggleCustomerStatus = (userId: string, currentStatus: boolean) => {
-    const userIndex = users.findIndex((u) => u.id === userId)
-    if (userIndex !== -1) {
-      users[userIndex].isActive = !currentStatus
-      toast({
-        title: currentStatus ? "Customer disabled" : "Customer enabled",
-        description: `Account has been ${currentStatus ? "disabled" : "enabled"}.`,
-      })
-    }
+    // In a real app, you would call an API to update status
+    toast({
+        title: "Not Implemented",
+        description: "Updating customer status via API is not yet implemented."
+    })
   }
 
   return (
@@ -91,9 +93,9 @@ export default function AdminCustomersPage() {
               </TableHeader>
               <TableBody>
                 {filteredCustomers.map((customer) => {
-                  const stats = getCustomerStats(customer.id)
+                  const stats = getCustomerStats(customer.userId)
                   return (
-                    <TableRow key={customer.id}>
+                    <TableRow key={customer.userId}>
                       <TableCell>
                         <div>
                           <p className="font-medium">{customer.name}</p>
@@ -119,7 +121,7 @@ export default function AdminCustomersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => toggleCustomerStatus(customer.id, customer.isActive)}
+                          onClick={() => toggleCustomerStatus(customer.userId, customer.isActive)}
                         >
                           {customer.isActive ? (
                             <>

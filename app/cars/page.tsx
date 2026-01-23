@@ -8,10 +8,7 @@ import { CarFiltersComponent } from "@/components/car-filters"
 import { useCarsStore } from "@/lib/store"
 import type { CarFilters } from "@/types"
 import { Input } from "@/components/ui/input"
-import { Search, Sparkles } from "lucide-react"
-import { AISearchBar } from "@/components/ai-search-bar"
-import { AIRecommendations } from "@/components/ai-recommendations"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Search } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 
@@ -19,17 +16,11 @@ export default function CarsPage() {
   const { cars } = useCarsStore()
   const [filters, setFilters] = useState<CarFilters>({})
   const [searchQuery, setSearchQuery] = useState("")
-  const [aiFilteredIds, setAiFilteredIds] = useState<string[] | null>(null)
-  const [aiExplanation, setAiExplanation] = useState("")
 
   // small animated counter for results
   const [animatedCount, setAnimatedCount] = useState(0)
   const filteredCars = useMemo(() => {
     let carsToFilter = cars
-
-    if (aiFilteredIds && aiFilteredIds.length > 0) {
-      carsToFilter = cars.filter((car) => aiFilteredIds.includes(car.carId ?? car.carId))
-    }
 
     return carsToFilter.filter((car) => {
       // Search query filter
@@ -37,7 +28,7 @@ export default function CarsPage() {
         const query = searchQuery.toLowerCase()
         const matchesSearch =
           (car.make && car.make.toLowerCase().includes(query)) ||
-          (car.carModel && car.carModel.toLowerCase().includes(query)) ||
+          (car.model && car.model.toLowerCase().includes(query)) ||
           (car.location && car.location.toLowerCase().includes(query))
         if (!matchesSearch) return false
       }
@@ -68,7 +59,7 @@ export default function CarsPage() {
 
       return true
     })
-  }, [cars, filters, searchQuery, aiFilteredIds])
+  }, [cars, filters, searchQuery])
 
   // animate result count when filteredCars changes
   useEffect(() => {
@@ -94,15 +85,7 @@ export default function CarsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredCars.length])
 
-  const handleAISearchResults = (carIds: string[], explanation: string) => {
-    setAiFilteredIds(carIds)
-    setAiExplanation(explanation)
-  }
 
-  const clearAIFilter = () => {
-    setAiFilteredIds(null)
-    setAiExplanation("")
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -131,55 +114,15 @@ export default function CarsPage() {
           </div>
 
           <div className="mb-6">
-            <Tabs defaultValue="ai" className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="ai" className="gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  AI Search
-                </TabsTrigger>
-                <TabsTrigger value="traditional" className="gap-2">
-                  <Search className="h-4 w-4" />
-                  Traditional Search
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="ai">
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <AISearchBar onResults={handleAISearchResults} />
-                  {aiFilteredIds && (
-                    <div className="mt-2 flex items-center gap-3 text-sm">
-                      <button onClick={clearAIFilter} className="text-primary hover:underline">
-                        Clear AI filter
-                      </button>
-                      {aiExplanation && (
-                        <span className="text-muted-foreground">• {aiExplanation}</span>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-              </TabsContent>
-
-              <TabsContent value="traditional">
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className="relative max-w-md"
-                >
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by make, model, or location..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </motion.div>
-              </TabsContent>
-            </Tabs>
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by make, model, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
 
           <div className="grid lg:grid-cols-[300px_1fr] gap-8">
@@ -192,7 +135,6 @@ export default function CarsPage() {
                 className="space-y-6 sticky top-20"
               >
                 <CarFiltersComponent filters={filters} onFiltersChange={setFilters} />
-                <AIRecommendations />
               </motion.div>
             </aside>
 
@@ -206,16 +148,10 @@ export default function CarsPage() {
                   className="text-sm text-muted-foreground"
                 >
                   <span className="font-medium text-gray-900 dark:text-white">{animatedCount}</span>{" "}
-                  car{filteredCars.length !== 1 ? "s" : ""} found {aiFilteredIds && <span className="text-primary">• AI filtered</span>}
+                  car{filteredCars.length !== 1 ? "s" : ""} found
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}>
-                  {aiFilteredIds ? (
-                    <div className="text-xs text-muted-foreground">
-                      Showing AI suggestions — <button onClick={clearAIFilter} className="text-primary hover:underline ml-1">Clear</button>
-                    </div>
-                  ) : null}
-                </motion.div>
+
               </div>
 
               {filteredCars.length === 0 ? (
@@ -241,7 +177,6 @@ export default function CarsPage() {
                         onClick={() => {
                           setFilters({})
                           setSearchQuery("")
-                          clearAIFilter()
                         }}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-md border text-sm"
                       >

@@ -31,7 +31,7 @@ import {
   ShieldCheck,
   ArrowLeft,
 } from "lucide-react";
-import { BookingPayload } from "@/models/Booking";
+import { BookingPayload } from "@/types";
 
 
 export default function PaymentPage({
@@ -60,10 +60,12 @@ export default function PaymentPage({
   const car = booking ? cars.find((c) => c.carId === booking.carId) : null;
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
+    // Middleware protects this route, but just in case:
+     if (!isAuthenticated && !user) {
+         // Optionally redirect to home or show unauth state
+         // router.push("/"); 
+     }
+  }, [isAuthenticated, user, router]);
 
   if (!booking || !car) {
     return (
@@ -165,7 +167,7 @@ export default function PaymentPage({
               <div>
                 <h1 className="text-2xl font-bold mb-2">Payment Successful!</h1>
                 <p className="text-muted-foreground">
-                  Your booking for {car.make} {car.carModel} has been confirmed.
+                  Your booking for {car.make} {car.model} has been confirmed.
                 </p>
               </div>
               <div className="bg-muted rounded-lg p-4 text-left space-y-2">
@@ -238,7 +240,7 @@ export default function PaymentPage({
                     </div>
                     <div>
                       <h3 className="font-semibold">
-                        {car.make} {car.carModel}
+                        {`${car.make} ${car.model} car`}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {car.year} • {car.transmission}

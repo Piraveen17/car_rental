@@ -4,7 +4,6 @@ import type React from "react";
 
 import { useEffect, useState } from "react";
 import { useMaintenanceStore, useCarsStore } from "@/lib/store";
-import Maintenance from "@/models/Maintenance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +23,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -52,11 +61,12 @@ export default function AdminMaintenancePage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   type MaintenanceStatus = "pending" | "fixed";
 
   const [formData, setFormData] = useState({
-    carId: "",
+    car_id: "",
     issue: "",
     cost: 0,
     date: format(new Date(), "yyyy-MM-dd"),
@@ -65,7 +75,7 @@ export default function AdminMaintenancePage() {
 
   const resetForm = () => {
     setFormData({
-      carId: "",
+      car_id: "",
       issue: "",
       cost: 0,
       date: format(new Date(), "yyyy-MM-dd"),
@@ -78,7 +88,7 @@ export default function AdminMaintenancePage() {
     e.preventDefault();
 
     const payload: MaintenancePayload = {
-      carId: formData.carId,
+      car_id: formData.car_id,
       issue: formData.issue,
       cost: formData.cost,
       date: new Date(formData.date),
@@ -94,8 +104,8 @@ export default function AdminMaintenancePage() {
     } else {
       addRecord(payload);
       // Update car status to maintenance if pending
-      if (formData.status === "pending") {
-        updateCar(formData.carId, { status: "maintenance" });
+      if (formData.status === "pending" || formData.status === "fixed") {
+        updateCar(formData.car_id, { status: "maintenance" });
       }
       toast({
         title: "Record added",
@@ -112,7 +122,7 @@ export default function AdminMaintenancePage() {
     if (record) {
       setEditingRecord(recordId);
       setFormData({
-        carId: record.carId,
+        car_id: record.car_id,
         issue: record.issue,
         cost: record.cost,
         date: format(new Date(record.date), "yyyy-MM-dd"),
@@ -122,12 +132,19 @@ export default function AdminMaintenancePage() {
     }
   };
 
-  const handleDelete = (recordId: string) => {
-    deleteRecord(recordId);
-    toast({
-      title: "Record deleted",
-      description: "Maintenance record has been removed.",
-    });
+  const handleDeleteClick = (recordId: string) => {
+    setDeleteId(recordId);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteRecord(deleteId);
+      setDeleteId(null);
+      toast({
+        title: "Record deleted",
+        description: "Maintenance record has been removed.",
+      });
+    }
   };
 
   const handleStatusChange = (
@@ -136,16 +153,21 @@ export default function AdminMaintenancePage() {
   ) => {
     const record = records.find((r) => r.recordId === recordId);
     if (record) {
-      const updatedRecord = {
-        ...record,
+      // Create a clean payload, ensuring date is a Date object
+      const cleanPayload: MaintenancePayload = {
+        car_id: record.car_id,
+        issue: record.issue,
+        cost: record.cost,
+        date: typeof record.date === 'string' ? new Date(record.date) : record.date,
         status: newStatus,
-      } as MaintenancePayload;
-      updateRecord(recordId, updatedRecord);
+      };
+      
+      updateRecord(recordId, cleanPayload);
       // Update car status based on maintenance status
       if (newStatus === "fixed") {
-        updateCar(record.carId, { status: "active" });
+        updateCar(record.car_id, { status: "active" });
       } else {
-        updateCar(record.carId, { status: "maintenance" });
+        updateCar(record.car_id, { status: "maintenance" });
       }
       toast({
         title: "Status updated",
@@ -199,9 +221,9 @@ export default function AdminMaintenancePage() {
               <div className="space-y-2">
                 <Label htmlFor="carId">Vehicle</Label>
                 <Select
-                  value={formData.carId}
+                  value={formData.car_id}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, carId: value })
+                    setFormData({ ...formData, car_id: value })
                   }
                 >
                   <SelectTrigger>
@@ -209,8 +231,8 @@ export default function AdminMaintenancePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {cars.map((car) => (
-                      <SelectItem key={car.carId} value={car.carId}>
-                        {car.make} {car.carModel} ({car.year})
+                      <SelectItem key={car.car_id} value={car.car_id}>
+                        {car.make} {car.model} ({car.year})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -273,6 +295,7 @@ export default function AdminMaintenancePage() {
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="fixed">Fixed</SelectItem>
+
                   </SelectContent>
                 </Select>
               </div>
@@ -296,6 +319,23 @@ export default function AdminMaintenancePage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the maintenance record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Stats */}
       <div className="grid sm:grid-cols-3 gap-4">
@@ -364,12 +404,12 @@ export default function AdminMaintenancePage() {
               </TableHeader>
               <TableBody>
                 {records.map((record) => {
-                  const car = cars.find((c) => c.carId === record.carId);
+                  const car = cars.find((c) => c.car_id === record.car_id);
                   return (
                     <TableRow key={record.recordId}>
                       <TableCell>
                         <p className="font-medium">
-                          {car?.make} {car?.carModel}
+                          {car?.make} {car?.model}
                         </p>
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
@@ -418,7 +458,7 @@ export default function AdminMaintenancePage() {
                             variant="ghost"
                             size="icon"
                             className="text-destructive"
-                            onClick={() => handleDelete(record.recordId)}
+                            onClick={() => handleDeleteClick(record.recordId)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

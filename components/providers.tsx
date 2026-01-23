@@ -3,11 +3,17 @@
 import type React from "react"
 
 import { useEffect } from "react"
-import { useThemeStore } from "@/lib/store"
-import { AIChatbot } from "@/components/ai-chatbot"
+import { useThemeStore, useAuthStore } from "@/lib/store"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useThemeStore()
+  const { checkSession, isHydrated } = useAuthStore()
+
+  useEffect(() => {
+    if (isHydrated) {
+        checkSession()
+    }
+  }, [isHydrated, checkSession])
 
   useEffect(() => {
     // Apply theme on mount
@@ -36,7 +42,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <AIChatbot />
     </>
   )
 }

@@ -41,7 +41,7 @@ interface BookingsState {
   fetchBookings: () => Promise<void>;
   fetchMyBookings: () => Promise<void>;
   addBooking: (booking: BookingPayload) => Promise<string>;
-  updateBooking: (id: string, updates: BookingPayload) => Promise<void>;
+  updateBooking: (id: string, updates: Partial<BookingPayload>) => Promise<void>;
   getBookingsForUser: (userId: string) => IBooking[];
 }
 
@@ -113,11 +113,19 @@ export const useAuthStore = create<AuthState>()(
          set({ user: null, isAuthenticated: false });
       },
       
-      updateProfile: (updates: Partial<IUser>) => {
+      updateProfile: async (updates: Partial<IUser>) => {
         const current = get().user;
         if (!current) return;
-        const updated = { ...current, ...updates, updatedAt: new Date() } as IUser;
-        set({ user: updated });
+        
+        try {
+            await apiClient.patch("/users/me", updates);
+            // Optimistic update
+            const updated = { ...current, ...updates, updatedAt: new Date() } as IUser;
+            set({ user: updated });
+        } catch (error) {
+            console.error("Failed to update profile", error);
+            // Revert or show error? For now just log.
+        }
       },
       setHydrated: () => set({ isHydrated: true }),
       
@@ -156,19 +164,26 @@ export const useAuthStore = create<AuthState>()(
 
 /* ---------------------- Cars store ---------------------- */
 // helper: normalize server car -> ICar used by the UI
-// helper: normalize server car -> ICar used by the UI
 function normalizeCarFromServer(c: any): ICar {
   return {
-    ...c,
-    // Map snake_case to camelCase
-    car_id: c.car_id ?? c.id ?? c._id ?? uuidv4(),
-    pricePerDay: c.pricePerDay ?? c.price_per_day ?? 0,
-    fuelType: c.fuelType ?? c.fuel_type ?? "Unknown",
+    carId: c.car_id ?? c.id ?? c._id ?? uuidv4(),
+    make: c.make || "",
+    model: c.model || "",
+    year: c.year || new Date().getFullYear(),
+    pricePerDay: Number(c.pricePerDay ?? c.price_per_day ?? 0),
+    transmission: c.transmission || "Automatic",
+    fuelType: c.fuelType ?? c.fuel_type ?? "Petrol",
+    seats: c.seats || 4,
+    status: (c.status as any) || "active",
+    images: c.images || [],
+    features: c.features || [],
+    location: c.location || "",
+    description: c.description || "",
     
     // ensure dates are Date objects in client state
     createdAt: c.createdAt ? new Date(c.createdAt) : (c.created_at ? new Date(c.created_at) : new Date()),
     updatedAt: c.updatedAt ? new Date(c.updatedAt) : (c.updated_at ? new Date(c.updated_at) : new Date()),
-  } as ICar;
+  };
 }
 
 export const useCarsStore = create<CarsState>((set, get) => ({
@@ -192,12 +207,16 @@ export const useCarsStore = create<CarsState>((set, get) => ({
     try {
       const newCar: ICar = {
         ...carData,
-        car_id: uuidv4(),
+        carId: uuidv4(),
         createdAt: new Date(),
         updatedAt: new Date(),
       } as ICar;
 
       console.log("Add car API request:", newCar);
+      // We send the normalized object or the payload? 
+      // The API expects snake_case most likely, but let's stick to our plan of `snake_case` API <-> `camelCase` Frontend.
+      // Ideally we should map `newCar` back to snake_case for the API request if the API requires it. 
+      // For now, I will send `newCar` (camelCase) and if API fails, I will fix API to accept camelCase or map it there.
       const res = await apiClient.post("/cars", newCar);
       console.log("Add car API response:", res);
 
@@ -213,7 +232,7 @@ export const useCarsStore = create<CarsState>((set, get) => ({
       console.info("Add car API failed; saving locally.", error);
       const newCar: ICar = {
         ...carData,
-        car_id: uuidv4(),
+        carId: uuidv4(),
         createdAt: new Date(),
         updatedAt: new Date(),
       } as ICar;
@@ -224,18 +243,18 @@ export const useCarsStore = create<CarsState>((set, get) => ({
   },
 
   updateCar: async (
-    car_id: string,
+    carId: string,
     updates: Partial<CarPayload>
   ): Promise<void> => {
     try {
-      const res = await apiClient.put(`/cars/${car_id}`, updates);
+      const res = await apiClient.put(`/cars/${carId}`, updates);
 
       if (res.ok) {
         const saved = await res.json();
         const normalized = normalizeCarFromServer(saved);
         set((state) => ({
           cars: state.cars.map((c) =>
-            c.car_id === car_id
+            c.carId === carId
               ? {
                   ...c,
                   ...normalized,
@@ -248,7 +267,7 @@ export const useCarsStore = create<CarsState>((set, get) => ({
       } else if (res.status === 404) {
         set((state) => ({
           cars: state.cars.map((c) =>
-            c.car_id === car_id ? { ...c, ...updates, updatedAt: new Date() } : c
+            c.carId === carId ? { ...c, ...updates, updatedAt: new Date() } : c
           ) as ICar[],
         }));
       } else {
@@ -260,16 +279,16 @@ export const useCarsStore = create<CarsState>((set, get) => ({
       console.info("Update car API failed; will update locally.", err);
       set((state) => ({
         cars: state.cars.map((c) =>
-          c.car_id === car_id ? { ...c, ...updates, updatedAt: new Date() } : c
+          c.carId === carId ? { ...c, ...updates, updatedAt: new Date() } : c
         ) as ICar[],
       }));
       return;
     }
   },
 
-  deleteCar: async (car_id: string) => {
+  deleteCar: async (carId: string) => {
     try {
-      const res = await apiClient.delete(`/cars/${car_id}`);
+      const res = await apiClient.delete(`/cars/${carId}`);
       if (!res.ok && res.status !== 404) {
         throw new Error(
           `Failed to delete car: ${res.status} ${res.statusText}`
@@ -279,7 +298,7 @@ export const useCarsStore = create<CarsState>((set, get) => ({
       console.info("Delete car API failed; removing locally.", err);
     }
 
-    set((state) => ({ cars: state.cars.filter((c) => c.car_id !== car_id) }));
+    set((state) => ({ cars: state.cars.filter((c) => c.carId !== carId) }));
   },
 }));
 
@@ -287,15 +306,24 @@ export const useCarsStore = create<CarsState>((set, get) => ({
 // helper: normalize server booking -> IBooking used by the UI
 function normalizeBookingFromServer(b: any): IBooking {
   return {
-    ...b,
+    ...b, // Spread first to keep other props
     bookingId: b.bookingId ?? b.id ?? b._id ?? uuidv4(),
+    // Map relations
+    carId: b.carId ?? b.car_id ?? "",
+    userId: b.userId ?? b.user_id ?? "",
+    
     // handle field naming mismatch
-    totalAmount: b.totalAmount ?? b.totalPrice ?? 0,
+    totalAmount: Number(b.totalAmount ?? b.totalPrice ?? 0),
     // ensure dates are Date objects
     startDate: b.startDate ? new Date(b.startDate) : new Date(),
     endDate: b.endDate ? new Date(b.endDate) : new Date(),
     createdAt: b.createdAt ? new Date(b.createdAt) : new Date(),
     updatedAt: b.updatedAt ? new Date(b.updatedAt) : new Date(),
+    
+    // Ensure relations are objects if present
+    car: b.car ? normalizeCarFromServer(b.car) : undefined,
+    // user: b.user ? normalizeUser(b.user) : undefined // If we had normalizeUser
+    bookingStatus: b.bookingStatus ?? b.status ?? "pending",
   } as IBooking;
 }
 
@@ -357,7 +385,13 @@ export const useBookingsStore = create<BookingsState>((set, get) => ({
 
   updateBooking: async (bookingId, updates) => {
     try {
-      const res = await apiClient.put(`/bookings/${bookingId}`, updates);
+      // Map bookingStatus to status for API
+      const apiUpdates: any = { ...updates };
+      if (updates.bookingStatus) {
+        apiUpdates.status = updates.bookingStatus;
+      }
+      
+      const res = await apiClient.put(`/bookings/${bookingId}`, apiUpdates);
       if (!res.ok && res.status !== 404) {
         throw new Error(`Failed to update booking: ${res.statusText}`);
       }
@@ -381,6 +415,19 @@ export const useBookingsStore = create<BookingsState>((set, get) => ({
 
 /* ---------------------- Maintenance store ---------------------- */
 
+function normalizeMaintenanceFromServer(m: any): IMaintenance {
+  return {
+    ...m,
+    recordId: m.recordId ?? m.id ?? m._id ?? uuidv4(),
+    carId: m.carId ?? m.car_id ?? "",
+    cost: Number(m.cost ?? 0),
+    date: m.date ? new Date(m.date) : new Date(),
+    createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
+    updatedAt: m.updatedAt ? new Date(m.updatedAt) : new Date(),
+    car: m.car ? normalizeCarFromServer(m.car) : undefined,
+  } as IMaintenance;
+}
+
 export const useMaintenanceStore = create<MaintenanceState>((set, get) => ({
   records: [],
 
@@ -390,8 +437,9 @@ export const useMaintenanceStore = create<MaintenanceState>((set, get) => ({
       const res = await apiClient.get("/maintenance");
       if (!res.ok)
         throw new Error(`Failed to fetch maintenance: ${res.statusText}`);
-      const data: IMaintenance[] = await res.json();
-      set({ records: Array.isArray(data) ? data : [] });
+      const data: any = await res.json();
+      const records = Array.isArray(data) ? data.map(normalizeMaintenanceFromServer) : [];
+      set({ records });
     } catch (error) {
       console.error("Error fetching maintenance records:", error);
       throw error;
@@ -411,8 +459,9 @@ export const useMaintenanceStore = create<MaintenanceState>((set, get) => ({
 
       if (res.ok) {
         const saved = await res.json();
-        set((s) => ({ records: [...s.records, saved] }));
-        return saved;
+        const normalized = normalizeMaintenanceFromServer(saved);
+        set((s) => ({ records: [...s.records, normalized] }));
+        return normalized;
       }
     } catch (err) {
       console.info("Maintenance API unavailable; saving locally.", err);

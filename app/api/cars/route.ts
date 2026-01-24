@@ -6,13 +6,14 @@ export async function GET(req: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Check availability logic using admin/staff check
+    // If usage of RPC is problematic for public (unauthenticated), we handle public case.
+    // user might be null.
+    
     let isAdminOrStaff = false;
-
     if (user) {
-      const role = user.user_metadata?.role || 'customer';
-      if (['admin', 'staff'].includes(role)) {
-        isAdminOrStaff = true;
-      }
+        const { data } = await supabase.rpc('is_role', { roles: ['admin', 'staff'] });
+        isAdminOrStaff = !!data;
     }
 
     let query = supabase
@@ -21,8 +22,8 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: false });
 
     if (!isAdminOrStaff) {
-      // Assuming 'available' is the public status equivalent to 'active'
-      query = query.eq('status', 'available');
+      // Public users only see 'active' cars
+      query = query.eq('status', 'active');
     }
 
     const { data: cars, error } = await query;
@@ -30,11 +31,17 @@ export async function GET(req: Request) {
 
     const formattedCars = cars.map(car => ({
       ...car,
-      car_id: car.car_id, // Compat
-      id: car.car_id
+      carId: car.car_id, // Map DB snake_case -> API camelCase (though client normalizes it too)
+      pricePerDay: car.price_per_day,
+      fuelType: car.fuel_type
     }));
 
-    return NextResponse.json(formattedCars);
+    const response = NextResponse.json(formattedCars);
+    
+    // Cache for 60 seconds, revalidate in background
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    
+    return response;
   } catch (error) {
     console.error('Error fetching cars:', error);
     return NextResponse.json({ error: 'Failed to fetch cars' }, { status: 500 });
@@ -50,51 +57,55 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const role = user.user_metadata?.role || 'customer';
-    if (role !== 'admin') {
+    const { data: isAuthorized } = await supabase.rpc('is_role', { roles: ['admin'] });
+    if (!isAuthorized) {
          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json();
-
-    // // DEBUG: Check public.users role
-    // const { data: dbUser, error: dbError } = await supabase
-    //   .from('users')
-    //   .select('*')
-    //   .eq('id', user.id)
-    //   .single();
-    // if (dbError) console.error('Error fetching public user:', dbError);
-    // console.log('DB User Role:', dbUser?.role, 'Metadata Role:', role); 
-    // // END DEBUG
-
+    
+    // Accept camelCase from frontend, map to snake_case for DB
+    const { 
+      carId, 
+      make, 
+      model, 
+      year, 
+      pricePerDay, 
+      transmission, 
+      fuelType, 
+      seats, 
+      status, 
+      images, 
+      features, 
+      location, 
+      description 
+    } = body;
 
     const { data: car, error } = await supabase
       .from('cars')
       .insert({
-        car_id: body.car_id,
-          make: body.make,
-          model: body.model,
-          year: body.year,
-          price_per_day: body.price_per_day, 
-          transmission: body.transmission,
-          fuel_type: body.fuel_type,
-          seats: body.seats,
-          status: body.status || 'active',
-          images: body.images || [],
-          features: body.features || [],
-          location: body.location,
-          description: body.description,
-
+          car_id: carId || body.car_id, // Fallback
+          make,
+          model,
+          year,
+          price_per_day: pricePerDay, 
+          transmission,
+          fuel_type: fuelType,
+          seats,
+          status: status || 'active',
+          images: images || [],
+          features: features || [],
+          location,
+          description,
       })
       .select()
       .single();
-
 
     if (error) throw error;
 
     return NextResponse.json({
         ...car,
-        car_id: car.car_id,
+        carId: car.car_id,
     }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating car:', error);

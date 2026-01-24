@@ -33,8 +33,8 @@ import { Search, Download, FileText } from "lucide-react";
 import { BookingPayload, BookingStatus } from "@/types";
 
 const statusConfig: Record<BookingStatus, { label: string; color: string }> = {
-  pending_payment: {
-    label: "Pending Payment",
+  pending: {
+    label: "Pending",
     color: "bg-warning text-warning-foreground",
   },
   confirmed: {
@@ -89,7 +89,7 @@ export default function StaffBookingsPage() {
     const booking = bookings.find((b) => b.bookingId === bookingId);
     if (!booking) return;
 
-    const updatedBooking: BookingPayload = {
+    const updatedBooking: Partial<BookingPayload> = {
       ...booking,
       bookingStatus: newStatus,
     };
@@ -182,8 +182,8 @@ export default function StaffBookingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending_payment">
-                    Pending Payment
+                  <SelectItem value="pending">
+                    Pending
                   </SelectItem>
                   <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
@@ -255,7 +255,7 @@ export default function StaffBookingsPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pending_payment">
+                              <SelectItem value="pending">
                                 Pending
                               </SelectItem>
                               <SelectItem value="confirmed">

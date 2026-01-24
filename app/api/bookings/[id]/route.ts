@@ -27,9 +27,26 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const body = await request.json();
 
+    // Sanitize and map payload to DB schema
+    // Client sends camelCase (bookingId, userId, carId...) and relations (car, user).
+    // DB needs snake_case and no relations.
+    const updates: any = {};
+    if (body.status) updates.status = body.status;
+    if (body.bookingStatus) updates.status = body.bookingStatus;
+    if (body.paymentStatus !== undefined) updates.payment_status = body.paymentStatus;
+    // Map other fields as needed
+    
+    // If body has direct snake_case keys (sometimes client sends them), keep them
+    if (body.payment_status) updates.payment_status = body.payment_status;
+
+    // Prevent empty updates
+    if (Object.keys(updates).length === 0) {
+         return NextResponse.json({ message: "No valid fields to update" });
+    }
+
     const { data: updatedBooking, error } = await supabase
         .from('bookings')
-        .update(body)
+        .update(updates)
         .eq('id', id)
         .select()
         .single();

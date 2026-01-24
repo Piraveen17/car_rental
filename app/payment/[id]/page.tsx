@@ -134,6 +134,18 @@ export default function PaymentPage({
       };
 
       if (success) {
+        // Trigger Invoice Generation
+        try {
+            const invRes = await fetch(`/api/bookings/${booking.bookingId}/invoice`, { method: 'POST' });
+            if (invRes.ok) {
+                const invData = await invRes.json();
+                console.log("Invoice generated:", invData.url);
+                updatedBooking.invoiceUrl = invData.url;
+            }
+        } catch (e) {
+            console.error("Failed to trigger invoice generation", e);
+        }
+
         updateBooking(booking.bookingId, updatedBooking);
 
         setPaymentComplete(true);
@@ -194,6 +206,13 @@ export default function PaymentPage({
                 <Button asChild>
                   <Link href="/dashboard">View My Bookings</Link>
                 </Button>
+                {booking.invoiceUrl && (
+                    <Button variant="outline" asChild>
+                        <a href={booking.invoiceUrl} target="_blank" rel="noopener noreferrer">
+                            Download Invoice
+                        </a>
+                    </Button>
+                )}
                 <Button variant="outline" asChild>
                   <Link href="/cars">Book Another Car</Link>
                 </Button>
@@ -278,12 +297,22 @@ export default function PaymentPage({
                   <Separator />
 
                   <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        ${car.pricePerDay} x {days} days
-                      </span>
-                      <span>${booking.totalAmount}</span>
-                    </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Base Rental ({days} days)
+                        </span>
+                        <span>${booking.baseAmount || (booking.totalAmount - (booking.addonsAmount || 0))}</span>
+                      </div>
+                      {booking.addonsAmount && booking.addonsAmount > 0 ? (
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Add-ons</span>
+                            <span>+${booking.addonsAmount}</span>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Booking Total</span>
+                        <span>${booking.totalAmount}</span>
+                      </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Insurance</span>
                       <span className="text-success">Included</span>

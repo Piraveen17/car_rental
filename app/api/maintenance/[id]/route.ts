@@ -8,8 +8,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const role = user.user_metadata?.role || 'customer';
-    if (!['admin', 'staff'].includes(role)) {
+    const { data: isAuthorized } = await supabase.rpc('is_role', { roles: ['admin', 'staff'] });
+    if (!isAuthorized) {
          return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -31,7 +31,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             cost: body.cost,
             date: body.date,
             type: body.type,
-            car_id: body.car_id
+            car_id: body.carId || body.car_id
         })
         .eq('id', id)
         .select()
@@ -60,8 +60,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const role = user.user_metadata?.role || 'customer';
-    if (role !== 'admin') { // Only admin delete
+    const { data: isAuthorized } = await supabase.rpc('is_role', { roles: ['admin', 'staff'] });
+    if (!isAuthorized) { // Matching DB policy where staff can manage maintenance
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

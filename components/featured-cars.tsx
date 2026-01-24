@@ -52,24 +52,13 @@ export function FeaturedCars() {
         </motion.div>
 
         {/* Car Grid */}
-        <motion.div
+        <div
           className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.15,
-              },
-            },
-          }}
+          
         >
-          {featuredCars.map((car) => (
+          {featuredCars.map((car, index) => (
             <motion.div
-              key={car.carId}
+              key={car.carId || index}
               variants={{
                 hidden: { opacity: 0, y: 40 },
                 visible: { opacity: 1, y: 0 },
@@ -81,7 +70,7 @@ export function FeaturedCars() {
               <CarCard car={car} />
             </motion.div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Mobile CTA */}
         <div className="mt-8 text-center sm:hidden">

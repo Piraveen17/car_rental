@@ -1,12 +1,13 @@
 "use client";
 
-import { use, useState, useMemo } from "react";
+import { use, useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ImageGallery } from "@/components/image-gallery";
-import { BookingCalendar } from "@/components/booking-calendar";
+import { CarAvailabilityCalendar } from "@/components/car-availability-calendar";
+import { AddonsSelector } from "@/components/addons-selector";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +40,12 @@ export default function CarDetailsPage({
   const { toast } = useToast();
 
   const [selectedRange, setSelectedRange] = useState<DateRange | undefined>();
+  const [addons, setAddons] = useState<BookingPayload["addons"]>({
+    driver: false,
+    extraKmQty: 0,
+    delivery: false,
+  });
+  const [addonsTotal, setAddonsTotal] = useState(0);
   const [isBooking, setIsBooking] = useState(false);
 
   const car = cars.find((c) => c.carId === id);
@@ -64,13 +71,14 @@ export default function CarDetailsPage({
     );
   }
 
+  const days = useMemo(() => {
+     if (!selectedRange?.from || !selectedRange?.to) return 0;
+     return Math.ceil((selectedRange.to.getTime() - selectedRange.from.getTime()) / (1000 * 60 * 60 * 24));
+  }, [selectedRange]);
+
   const calculateTotal = () => {
-    if (!selectedRange?.from || !selectedRange?.to) return 0;
-    const days = Math.ceil(
-      (selectedRange.to.getTime() - selectedRange.from.getTime()) /
-        (1000 * 60 * 60 * 24)
-    );
-    return days * car.pricePerDay;
+    const baseTotal = days * car.pricePerDay;
+    return baseTotal + addonsTotal;
   };
 
   const handleBooking = async () => {
@@ -80,10 +88,6 @@ export default function CarDetailsPage({
         description: "You need to be logged in to book a car.",
         variant: "destructive",
       });
-      // Redirect to home or let middleware handle it if they try to proceed deeply
-      // or use window.location.href to trigger middleware logic if needed
-      // But ideally, we just show the toast. 
-      // Or we can use clerk's openSignIn() if available, but for now just showing toast is better than 404.
       return;
     }
 
@@ -106,17 +110,18 @@ export default function CarDetailsPage({
         endDate: selectedRange.to,
         totalAmount: calculateTotal(),
         paymentStatus: "pending",
-        bookingStatus: "pending_payment",
+        bookingStatus: "pending",
+        addons: addons, // Pass selected addons
       } as BookingPayload);
 
       toast({
-        title: "Booking created!",
-        description: "Redirecting to payment...",
+        title: "Booking Request Sent!",
+        description: "Your booking is pending confirmation. You can track it in your dashboard.",
       });
 
       console.log(bookingId);
 
-      router.push(`/payment/${bookingId}`);
+      router.push(`/dashboard`);
     } catch {
       toast({
         title: "Booking failed",
@@ -249,12 +254,42 @@ export default function CarDetailsPage({
 
             {/* Right Column - Booking */}
             <div className="space-y-6">
-              <BookingCalendar
-                bookedDates={carBookings}
+              <CarAvailabilityCalendar
+                carId={car.carId}
                 pricePerDay={car.pricePerDay}
-                onDateSelect={setSelectedRange}
-                selectedRange={selectedRange}
+                onRangeSelect={setSelectedRange}
               />
+
+              {selectedRange?.from && selectedRange?.to && (
+                  <div className="space-y-4">
+                    <AddonsSelector 
+                        days={days} 
+                        onChange={(newAddons, total) => {
+                            setAddons(newAddons);
+                            setAddonsTotal(total);
+                        }} 
+                    />
+                    
+                    <Card>
+                        <CardContent className="p-4 bg-muted/20">
+                            <div className="flex justify-between text-sm mb-2">
+                                <span>Rental ({days} days)</span>
+                                <span>${days * car.pricePerDay}</span>
+                            </div>
+                            {addonsTotal > 0 && (
+                                <div className="flex justify-between text-sm mb-2 text-muted-foreground">
+                                    <span>Add-ons</span>
+                                    <span>+${addonsTotal}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-bold text-lg pt-2 border-t mt-2">
+                                <span>Total</span>
+                                <span className="text-primary">${calculateTotal()}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                  </div>
+              )}
 
               <Button
                 className="w-full"
@@ -287,10 +322,85 @@ export default function CarDetailsPage({
               )}
             </div>
           </div>
+          
+          <Separator className="my-12" />
+
+          {/* Reviews Section */}
+          <div className="space-y-6">
+             <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Customer Reviews</h2>
+                {user && (
+                    <ReviewsAuthCheck carId={car.carId} userId={user.userId} onReviewSuccess={() => window.location.reload()} />
+                )}
+             </div>
+             <ReviewsSection carId={car.carId} />
+          </div>
+
         </div>
       </main>
 
       <Footer />
     </div>
   );
+}
+
+// Sub-components to keep main file clean-ish and handle async logic
+import { ReviewsList } from "@/components/reviews-list";
+import { ReviewForm } from "@/components/review-form";
+import { apiClient } from "@/lib/api-client";
+
+function ReviewsSection({ carId }: { carId: string }) {
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [stats, setStats] = useState({ count: 0, average: 0 });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        apiClient.get(`/cars/${carId}/reviews`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.reviews) {
+                    setReviews(data.reviews);
+                    setStats(data.stats);
+                }
+            })
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, [carId]);
+
+    if (loading) return <p className="text-muted-foreground">Loading reviews...</p>;
+
+    return <ReviewsList reviews={reviews} stats={stats} />;
+}
+
+function ReviewsAuthCheck({ carId, userId, onReviewSuccess }: { carId: string, userId: string, onReviewSuccess: () => void }) {
+    const [eligibleBookingId, setEligibleBookingId] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Check if user has a completed booking for this car that isn't reviewed yet
+        // This logic is complex for client-side without a specific API.
+        // We can fetch "my bookings" and filter.
+        // Or simpler: Just show the button, and let server reject if invalid.
+        // But prompt said: "If logged in AND has a completed booking... show Write review".
+        // Let's try to find one.
+        apiClient.get('/bookings/my-bookings')
+            .then(res => res.json())
+            .then((bookings: any[]) => {
+                if (Array.isArray(bookings)) {
+                   const completed = bookings.find(b => 
+                        b.carId === carId && 
+                        b.status === 'completed' 
+                        // && !b.has_review // We don't have this flag yet, but we have unique constraint.
+                        // Ideally we check if review exists.
+                   );
+                   if (completed) {
+                       setEligibleBookingId(completed.id ?? completed.bookingId);
+                   }
+                }
+            })
+            .catch(console.error);
+    }, [carId, userId]);
+
+    if (!eligibleBookingId) return null;
+
+    return <ReviewForm carId={carId} bookingId={eligibleBookingId} onSuccess={onReviewSuccess} />;
 }

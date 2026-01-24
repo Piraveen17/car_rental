@@ -34,21 +34,31 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const role = user.user_metadata?.role || 'customer';
-    if (!['admin', 'staff'].includes(role)) {
+    const { data: isAuthorized } = await supabase.rpc('is_role', { roles: ['admin'] });
+    if (!isAuthorized) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     const { id } = await params;
     const body = await request.json();
 
-    // Map camelCase to snake_case if necessary, or just rely on body matching if updated
-    // For safety, let's map common fields if they are mismatched
-    const updates: any = { ...body };
+    // Map camelCase to snake_case if necessary
+    const updates: any = { 
+       ...body,
+       // Normalize basic fields that might differ or be optional
+       images: body.images,
+       features: body.features
+    };
     if (body.pricePerDay) updates.price_per_day = body.pricePerDay;
     if (body.fuelType) updates.fuel_type = body.fuelType;
-    if (body.licensePlate) updates.license_plate = body.licensePlate;
-    if (body.imageUrl) updates.image_url = body.imageUrl;
+    if (body.seats) updates.seats = body.seats;
+    if (body.status) updates.status = body.status;
+    
+    // Legacy cleanup
+    delete updates.pricePerDay;
+    delete updates.fuelType;
+    delete updates.cardId;
+    delete updates.carId; // Immutable
 
     const { data: updatedCar, error } = await supabase
         .from('cars')
@@ -84,8 +94,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         
-        const role = user.user_metadata?.role || 'customer';
-        if (role !== 'admin') {
+        const { data: isAuthorized } = await supabase.rpc('is_role', { roles: ['admin'] });
+        if (!isAuthorized) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
     

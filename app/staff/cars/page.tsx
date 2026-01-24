@@ -73,10 +73,10 @@ export default function StaffCarsPage() {
     make: "",
     model: "",
     year: new Date().getFullYear(),
-    price_per_day: 0,
+    pricePerDay: 0,
     transmission: "automatic" as TransmissionType,
     seats: 5,
-    fuel_type: "",
+    fuelType: "",
     location: "",
     status: "active" as CarStatus,
     description: "",
@@ -104,10 +104,10 @@ export default function StaffCarsPage() {
       make: "",
       model: "",
       year: new Date().getFullYear(),
-      price_per_day: 0,
+      pricePerDay: 0,
       transmission: "automatic",
       seats: 5,
-      fuel_type: "",
+      fuelType: "",
       location: "",
       status: "active",
       description: "",
@@ -125,10 +125,10 @@ export default function StaffCarsPage() {
       make: formData.make ?? "",
       model: formData.model ?? "",
       year: formData.year ?? new Date().getFullYear(),
-      price_per_day: formData.price_per_day ?? 0,
+      pricePerDay: formData.pricePerDay ?? 0,
       transmission: (formData.transmission as TransmissionType) ?? "automatic",
       seats: formData.seats ?? 5,
-      fuel_type: formData.fuel_type ?? "",
+      fuelType: formData.fuelType ?? "",
       location: formData.location ?? "",
       status: (formData.status as CarStatus) ?? "active",
       description: formData.description ?? "",
@@ -149,7 +149,7 @@ export default function StaffCarsPage() {
 
     if (editingCar) {
       // updateCar expects (id, data)
-      updateCar(editingCar.car_id, payload);
+      updateCar(editingCar.carId, payload);
       toast({
         title: "Car updated",
         description: `${formData.make} ${formData.model} has been updated.`,
@@ -173,10 +173,10 @@ export default function StaffCarsPage() {
       make: car.make,
       model: car.model,
       year: car.year,
-      price_per_day: car.price_per_day,
+      pricePerDay: car.pricePerDay,
       transmission: car.transmission,
       seats: car.seats,
-      fuel_type: car.fuel_type,
+      fuelType: car.fuelType,
       location: car.location,
       status: car.status,
       description: car.description ?? "",
@@ -270,15 +270,15 @@ export default function StaffCarsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="price_per_day">Price Per Day ($)</Label>
+                  <Label htmlFor="pricePerDay">Price Per Day ($)</Label>
                   <Input
-                    id="price_per_day"
+                    id="pricePerDay"
                     type="number"
-                    value={formData.price_per_day}
+                    value={formData.pricePerDay}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        price_per_day: Number.parseInt(e.target.value),
+                        pricePerDay: Number.parseInt(e.target.value),
                       })
                     }
                     required
@@ -323,12 +323,12 @@ export default function StaffCarsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fuel_type">Fuel Type</Label>
+                  <Label htmlFor="fuelType">Fuel Type</Label>
                   <Input
-                    id="fuel_type"
-                    value={formData.fuel_type}
+                    id="fuelType"
+                    value={formData.fuelType}
                     onChange={(e) =>
-                      setFormData({ ...formData, fuel_type: e.target.value })
+                      setFormData({ ...formData, fuelType: e.target.value })
                     }
                     placeholder="Gasoline, Electric, Hybrid..."
                     required
@@ -454,7 +454,7 @@ export default function StaffCarsPage() {
               </TableHeader>
               <TableBody>
                 {filteredCars.map((car: ICar) => (
-                  <TableRow key={String(car.car_id)}>
+                  <TableRow key={String(car.carId)}>
                     <TableCell>
                       <div>
                         <p className="font-medium">
@@ -466,7 +466,7 @@ export default function StaffCarsPage() {
                       </div>
                     </TableCell>
                     <TableCell>{car.year}</TableCell>
-                    <TableCell>${car.price_per_day}</TableCell>
+                    <TableCell>${car.pricePerDay}</TableCell>
                     <TableCell>{car.location}</TableCell>
                     <TableCell>
                       <Badge className={statusColors[car.status]}>

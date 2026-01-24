@@ -39,7 +39,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
 const statusConfig = {
-  pending_payment: { label: "Pending Payment", color: "bg-warning text-warning-foreground", icon: Clock },
+  pending: { label: "Pending Confirmation", color: "bg-warning text-warning-foreground", icon: Clock },
   confirmed: { label: "Confirmed", color: "bg-success text-success-foreground", icon: CheckCircle2 },
   cancelled: { label: "Cancelled", color: "bg-destructive text-destructive-foreground", icon: XCircle },
   completed: { label: "Completed", color: "bg-muted text-muted-foreground", icon: CheckCircle2 },
@@ -144,7 +144,7 @@ export default function DashboardPage() {
     (b) => b.bookingStatus === "completed" || new Date(b.endDate) < new Date(),
   )
 
-  const pendingBookings = userBookings.filter((b) => b.bookingStatus === "pending_payment")
+  const pendingBookings = userBookings.filter((b) => b.bookingStatus === "pending")
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -291,7 +291,7 @@ export default function DashboardPage() {
                     <AnimatePresence initial={false}>
                       {userBookings.map((booking) => {
                         const car = cars.find((c) => c.carId === booking.carId)
-                        const status = statusConfig[booking.bookingStatus]
+                        const status = statusConfig[booking.bookingStatus] || statusConfig.pending
                         const StatusIcon = status.icon
 
                         return (
@@ -330,15 +330,8 @@ export default function DashboardPage() {
                                   </Link>
                                 </Button>
                               )}
-                              {booking.bookingStatus === "pending_payment" && (
-                                <Button size="sm" asChild>
-                                  <Link href={`/payment/${booking.bookingId}`}>
-                                    Pay Now
-                                    <ChevronRight className="h-4 w-4 ml-1" />
-                                  </Link>
-                                </Button>
-                              )}
-                              {(booking.bookingStatus === 'confirmed' || booking.bookingStatus === 'pending_payment') && 
+                              {/* Payment button removed for this phase */}
+                              {(booking.bookingStatus === 'confirmed' || booking.bookingStatus === 'pending') && 
                                new Date(booking.startDate) > new Date() && (
                                 <AlertDialog open={bookingToCancel === booking.bookingId} onOpenChange={(open) => !open && setBookingToCancel(null)}>
                                   <AlertDialogTrigger asChild>

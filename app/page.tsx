@@ -6,7 +6,6 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CarCard } from "@/components/car-card";
 import {
   Car,
   Shield,
@@ -16,7 +15,6 @@ import {
   Star,
   ChevronRight,
 } from "lucide-react";
-import { ThreeBackground } from "@/components/three-background";
 import { FeaturedCars } from "@/components/featured-cars";
 import { motion } from "framer-motion";
 
@@ -44,7 +42,22 @@ export default function HomePage() {
       name: "Emily Davis",
       rating: 5,
       comment: "Clear pricing and excellent support. Will use again.",
+    },{
+      name: "Sarah Johnson",
+      rating: 3,
+      comment:
+        "The advanced search found me the perfect car in seconds — booking was seamless.",
     },
+    {
+      name: "Michael Chen",
+      rating: 5,
+      comment: "Fast, friendly and reliable. Great selection for family trips.",
+    },
+    {
+      name: "Emily Davis",
+      rating: 4,
+      comment: "Clear pricing and excellent support. Will use again.",
+    }
   ];
 
   return (
@@ -55,7 +68,7 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* HERO */}
-        <section className="relative pt-24 pb-16 lg:pt-32 lg:pb-36 overflow-hidden">
+        <section className="relative pt-12 pb-14 lg:pt-16 lg:pb-20 overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
             {/* soft gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent" />
@@ -354,29 +367,37 @@ export default function HomePage() {
               </h2>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
-              {testimonials.map((t, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.06 * idx }}
-                >
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex gap-1 mb-4">
-                        {[...Array(t.rating)].map((_, i) => (
-                          <Star key={i} className="h-4 w-4 text-yellow-400" />
-                        ))}
-                      </div>
-                      <p className="text-muted-foreground mb-4">
-                        “{t.comment}”
-                      </p>
-                      <p className="font-semibold">{t.name}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+            {/* Marquee Container */}
+            <div className="relative overflow-hidden w-full">
+              {/* Fade edges */}
+              <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+
+              <div className="flex w-max animate-scroll-right pause-on-hover hover:cursor-grab active:cursor-grabbing">
+                {/* Render testimonials multiple times to fill screen for looping */}
+                {[...testimonials, ...testimonials].map((t, idx) => (
+                  <div key={idx} className="w-[300px] md:w-[400px] flex-shrink-0 px-3">
+                    <Card className="h-full hover:shadow-md transition-shadow">
+                      <CardContent className="pt-6">
+                        <div className="flex gap-1 mb-4">
+                          {[...Array(t.rating)].map((_, i) => (
+                            <Star key={i} className="h-4 w-4 text-yellow-400" />
+                          ))}
+                        </div>
+                        <p className="text-muted-foreground mb-4 italic">
+                          "{t.comment}"
+                        </p>
+                        <div className="flex items-center gap-3">
+                           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                              {t.name.charAt(0)}
+                           </div>
+                           <p className="font-semibold text-sm">{t.name}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>

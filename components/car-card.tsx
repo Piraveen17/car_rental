@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -14,7 +14,7 @@ interface CarCardProps {
   car: ICar;
 }
 
-export function CarCard({ car }: CarCardProps) {
+export const CarCard = memo(function CarCard({ car }: CarCardProps) {
   const [showQuickView, setShowQuickView] = useState(false);
 
   const statusColors = {
@@ -34,6 +34,7 @@ export function CarCard({ car }: CarCardProps) {
             alt={`${car.make} ${car.model}`}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
           />
           <Badge
             className={`absolute top-3 right-3 ${statusColors[car.status]}`}
@@ -94,15 +95,19 @@ export function CarCard({ car }: CarCardProps) {
             <Eye className="mr-2 h-4 w-4" />
             Quick View
           </Button>
-          <Button
+            <Button
             asChild
             size="sm"
             className="flex-1"
-            disabled={car.status !== "active"}
+            disabled={car.status !== "active" || !car.carId}
           >
-            <Link href={`/cars/${car.carId}`}>
-              {car.status === "active" ? "View Details" : "Unavailable"}
-            </Link>
+            {car.carId ? (
+              <Link href={`/cars/${car.carId}`}>
+                {car.status === "active" ? "View Details" : "Unavailable"}
+              </Link>
+            ) : (
+                <span className="pointer-events-none opacity-50">View Details</span>
+            )}
           </Button>
         </CardFooter>
       </Card>
@@ -114,4 +119,4 @@ export function CarCard({ car }: CarCardProps) {
       />
     </>
   );
-}
+});

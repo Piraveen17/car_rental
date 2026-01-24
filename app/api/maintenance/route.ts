@@ -11,8 +11,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const role = user.user_metadata?.role || 'customer';
-    if (!['admin', 'staff'].includes(role)) {
+    const { data: isAuthorized } = await supabase.rpc('is_role', { roles: ['admin', 'staff'] });
+    if (!isAuthorized) {
          return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -45,13 +45,19 @@ export async function POST(request: Request) {
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const role = user.user_metadata?.role || 'customer';
-    if (!['admin', 'staff'].includes(role)) {
+    const { data: isAuthorized } = await supabase.rpc('is_role', { roles: ['admin', 'staff'] });
+    if (!isAuthorized) {
          return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     const body = await request.json();
     
+    // Accept camelCase from frontend (newRecord in store.ts has camelCase)
+    // Map to snake_case for DB
+    const { carId, issue, date, cost, type, description } = body;
+    const dbCarId = carId || body.car_id;
+    const dbIssue = issue || description || body.description;
+
     // Sanitize status to ensure it matches DB constraint (pending | fixed)
     let status = body.status || 'pending';
     if (!['pending', 'fixed'].includes(status)) {
@@ -62,11 +68,11 @@ export async function POST(request: Request) {
     const { data: record, error } = await supabase
       .from('maintenance')
       .insert({
-          car_id: body.car_id,
-          type: body.type || 'repair', // Default to repair
-          description: body.issue || body.description,
-          date: body.date,
-          cost: body.cost,
+          car_id: dbCarId,
+          type: type || 'repair', 
+          description: dbIssue,
+          date,
+          cost,
           status: status
       })
       .select()
@@ -77,6 +83,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
         ...record,
         recordId: record.id,
+        // issue: record.description // optional, frontend logic handles it? IMaintenance has issue, DB has description
         issue: record.description
     }, { status: 201 });
   } catch (error: any) {

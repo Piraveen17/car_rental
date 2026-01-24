@@ -21,14 +21,14 @@ export type TransmissionType = "manual" | "automatic";
 export type CarStatus = "active" | "inactive" | "maintenance";
 
 export interface ICar {
-  car_id: string;
+  carId: string;
   make: string;
   model: string;
   year: number;
-  price_per_day: number;
+  pricePerDay: number;
   transmission: TransmissionType;
   seats: number;
-  fuel_type: string;
+  fuelType: string;
   images: string[];
   features: string[];
   location: string;
@@ -45,10 +45,10 @@ export type CarPayload = {
   make: string;
   model: string;
   year: number;
-  price_per_day: number;
+  pricePerDay: number;
   transmission: TransmissionType;
   seats: number;
-  fuel_type: string;
+  fuelType: string;
   location: string;
   status: CarStatus;
   description?: string;
@@ -59,20 +59,28 @@ export type CarPayload = {
 // Booking Types
 export type PaymentStatus = "pending" | "paid" | "failed";
 export type BookingStatus =
-  | "pending_payment"
+  | "pending"
   | "confirmed"
   | "cancelled"
   | "completed";
 
+export interface BookingAddons {
+  driver: boolean;
+  extraKmQty: number; // 0 if none
+  delivery: boolean;
+}
+
 export interface IBooking {
   bookingId: string;
   userId: string;
-  car_id: string;
+  carId: string;
   car?: ICar;
   user?: IUser;
   startDate: Date;
   endDate: Date;
   totalAmount: number;
+  baseAmount?: number;
+  addonsAmount?: number;
   paymentStatus: PaymentStatus;
   bookingStatus: BookingStatus;
   invoiceUrl?: string;
@@ -84,13 +92,14 @@ export interface IBooking {
 
 export type BookingPayload = {
   userId: string;
-  car_id: string;
+  carId: string;
   startDate: Date;
   endDate: Date;
   totalAmount: number;
   invoiceUrl?: string;
   paymentStatus: string;
   bookingStatus: string;
+  addons: BookingAddons;
 };
 
 
@@ -99,7 +108,7 @@ export type MaintenanceStatus = "pending" | "fixed";
 
 export interface IMaintenance {
   recordId: string;
-  car_id: string;
+  carId: string;
   car?: ICar;
   issue: string;
   cost: number;
@@ -112,7 +121,7 @@ export interface IMaintenance {
 }
 
 export interface MaintenancePayload {
-  car_id: string;
+  carId: string;
   issue: string;
   cost: number;
   date: Date;

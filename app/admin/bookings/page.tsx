@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useBookingsStore, useCarsStore, useUsersStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -43,8 +44,8 @@ import { Search, Download, FileText } from "lucide-react";
 import { BookingPayload, BookingStatus } from "@/types";
 
 const statusConfig: Record<BookingStatus, { label: string; color: string }> = {
-  pending_payment: {
-    label: "Pending Payment",
+  pending: {
+    label: "Pending Confirmation",
     color: "bg-warning text-warning-foreground",
   },
   confirmed: {
@@ -77,6 +78,10 @@ export default function AdminBookingsPage() {
     email: '', name: '', phone: '', carId: '', startDate: '', endDate: '', totalAmount: 0
   });
 
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+
   const handleManualBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -97,6 +102,7 @@ export default function AdminBookingsPage() {
     }
   };
 
+
   const cancelBooking = async (bookingId: string, reason: string) => {
      try {
         const res = await fetch(`/api/bookings/${bookingId}/admin-cancel`, {
@@ -110,6 +116,15 @@ export default function AdminBookingsPage() {
      } catch (error) {
         toast({ title: "Error", description: "Failed to cancel booking", variant: "destructive" });
      }
+  };
+
+  const confirmCancellation = () => {
+      if (bookingToCancelId && cancellationReason) {
+          cancelBooking(bookingToCancelId, cancellationReason);
+          setCancelDialogOpen(false);
+          setBookingToCancelId(null);
+          setCancellationReason("");
+      }
   };
 
   // Debug: Log any unexpected booking statuses
@@ -146,10 +161,11 @@ export default function AdminBookingsPage() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
+
   const handleStatusChange = (bookingId: string, newStatus: BookingStatus) => {
     if (newStatus === 'cancelled') {
-        const reason = prompt("Enter cancellation reason for admin record:");
-        if (reason) cancelBooking(bookingId, reason);
+        setBookingToCancelId(bookingId);
+        setCancelDialogOpen(true);
         return;
     }
     
@@ -157,8 +173,7 @@ export default function AdminBookingsPage() {
     const booking = bookings.find((b) => b.bookingId === bookingId);
     if (!booking) return;
 
-    const updatedBooking: BookingPayload = {
-      ...booking,
+    const updatedBooking: Partial<BookingPayload> = {
       bookingStatus: newStatus,
     };
 
@@ -303,8 +318,8 @@ export default function AdminBookingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending_payment">
-                    Pending Payment
+                  <SelectItem value="pending">
+                    Pending Confirmation
                   </SelectItem>
                   <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
@@ -380,7 +395,7 @@ export default function AdminBookingsPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pending_payment">
+                              <SelectItem value="pending">
                                 Pending
                               </SelectItem>
                               <SelectItem value="confirmed">
@@ -415,6 +430,31 @@ export default function AdminBookingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Cancel Booking</DialogTitle>
+                  <DialogDescription>
+                      Please provide a reason for cancelling this booking. This will be recorded in the system.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                  <Label className="mb-2 block">Cancellation Reason</Label>
+                  <Textarea 
+                      placeholder="e.g. Customer requested cancellation via phone..." 
+                      value={cancellationReason}
+                      onChange={(e) => setCancellationReason(e.target.value)}
+                  />
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Cancel</Button>
+                  <Button variant="destructive" onClick={confirmCancellation} disabled={!cancellationReason.trim()}>
+                      Confirm Cancellation
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -66,7 +66,7 @@ export default function AdminMaintenancePage() {
   type MaintenanceStatus = "pending" | "fixed";
 
   const [formData, setFormData] = useState({
-    car_id: "",
+    carId: "",
     issue: "",
     cost: 0,
     date: format(new Date(), "yyyy-MM-dd"),
@@ -75,7 +75,7 @@ export default function AdminMaintenancePage() {
 
   const resetForm = () => {
     setFormData({
-      car_id: "",
+      carId: "",
       issue: "",
       cost: 0,
       date: format(new Date(), "yyyy-MM-dd"),
@@ -88,7 +88,7 @@ export default function AdminMaintenancePage() {
     e.preventDefault();
 
     const payload: MaintenancePayload = {
-      car_id: formData.car_id,
+      carId: formData.carId,
       issue: formData.issue,
       cost: formData.cost,
       date: new Date(formData.date),
@@ -105,7 +105,7 @@ export default function AdminMaintenancePage() {
       addRecord(payload);
       // Update car status to maintenance if pending
       if (formData.status === "pending" || formData.status === "fixed") {
-        updateCar(formData.car_id, { status: "maintenance" });
+        updateCar(formData.carId, { status: "maintenance" });
       }
       toast({
         title: "Record added",
@@ -122,7 +122,7 @@ export default function AdminMaintenancePage() {
     if (record) {
       setEditingRecord(recordId);
       setFormData({
-        car_id: record.car_id,
+        carId: record.carId,
         issue: record.issue,
         cost: record.cost,
         date: format(new Date(record.date), "yyyy-MM-dd"),
@@ -155,7 +155,7 @@ export default function AdminMaintenancePage() {
     if (record) {
       // Create a clean payload, ensuring date is a Date object
       const cleanPayload: MaintenancePayload = {
-        car_id: record.car_id,
+        carId: record.carId,
         issue: record.issue,
         cost: record.cost,
         date: typeof record.date === 'string' ? new Date(record.date) : record.date,
@@ -165,9 +165,9 @@ export default function AdminMaintenancePage() {
       updateRecord(recordId, cleanPayload);
       // Update car status based on maintenance status
       if (newStatus === "fixed") {
-        updateCar(record.car_id, { status: "active" });
+        updateCar(record.carId, { status: "active" });
       } else {
-        updateCar(record.car_id, { status: "maintenance" });
+        updateCar(record.carId, { status: "maintenance" });
       }
       toast({
         title: "Status updated",
@@ -221,9 +221,9 @@ export default function AdminMaintenancePage() {
               <div className="space-y-2">
                 <Label htmlFor="carId">Vehicle</Label>
                 <Select
-                  value={formData.car_id}
+                  value={formData.carId}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, car_id: value })
+                    setFormData({ ...formData, carId: value })
                   }
                 >
                   <SelectTrigger>
@@ -231,7 +231,7 @@ export default function AdminMaintenancePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {cars.map((car) => (
-                      <SelectItem key={car.car_id} value={car.car_id}>
+                      <SelectItem key={car.carId} value={car.carId}>
                         {car.make} {car.model} ({car.year})
                       </SelectItem>
                     ))}
@@ -404,7 +404,7 @@ export default function AdminMaintenancePage() {
               </TableHeader>
               <TableBody>
                 {records.map((record) => {
-                  const car = cars.find((c) => c.car_id === record.car_id);
+                  const car = cars.find((c) => c.carId === record.carId);
                   return (
                     <TableRow key={record.recordId}>
                       <TableCell>

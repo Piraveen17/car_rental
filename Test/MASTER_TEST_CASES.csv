@@ -1,0 +1,83 @@
+ID,Area,Role,Preconditions,Steps,Expected Result
+AUTH-01,Login,Customer,Customer A exists,"Open /login
+Login with Customer A","Redirect to /dashboard
+Session persists on refresh"
+AUTH-02,Login,Staff,Staff user exists (role=staff in public.users),"Open /login
+Login with Staff","Redirect to /staff
+Cannot access /admin"
+AUTH-03,Login,Admin,Admin user exists (role=admin),"Open /login
+Login with Admin",Redirect to /admin
+AUTH-04,RBAC,Customer,Customer A logged in,"Navigate to /admin
+Navigate to /staff",Blocked (redirect to /login or 403)
+AUTH-05,RBAC,Staff,Staff logged in,Navigate to /admin,Blocked (redirect/403)
+AUTH-06,RBAC,Admin,Admin logged in,"Navigate to /admin/users
+Open role update UI",Accessible and role update UI visible
+AUTH-07,Registration,Public,None,"Open /register
+Register with role selection (if visible)
+Submit",User created with role=customer regardless of UI input
+AUTH-08,Session,Any,Logged in,"Hard refresh page
+Open a protected route",Session is restored; role guard still correct
+BOOK-01,Booking Create,Customer,Customer A logged in; Car 1 exists,"Open /cars
+Open Car 1 details
+Create booking for future window","Booking created with status=PENDING
+Visible in /dashboard"
+BOOK-02,Booking Pending not blocking,Customer,Customer A has PENDING booking on Car 1,Customer B books same Car 1 for overlapping window,Booking allowed (PENDING does NOT block availability)
+BOOK-03,Booking Confirm,Staff,Pending booking exists,"Staff opens /staff/bookings
+Confirm pending booking","Status becomes CONFIRMED
+Customer gets notification"
+BOOK-04,Booking Reject,Admin/Staff,Pending booking exists,Admin/Staff rejects booking,"Status becomes REJECTED
+Customer notified of rejection"
+BOOK-05,Customer Cancel Policy,Customer,Customer booking PENDING with start in future,Customer cancels booking from UI or API,"Status becomes CANCELLED
+Admin/Staff notified
+Customer notified"
+BOOK-06,Customer Cancel After Start,Customer,Booking start time <= now (simulate by editing dates or using a past start),Attempt cancel via /api/bookings/[id]/cancel,400 error: cannot cancel after start time
+BOOK-07,Admin Cancel,Admin/Staff,Any non-final booking exists,Admin/Staff cancels booking with reason,"Status becomes CANCELLED
+Customer notified with reason"
+BOOK-08,Complete booking,Admin/Staff,Confirmed booking exists,Mark booking as COMPLETED (if UI supports),Status becomes COMPLETED; no further cancel allowed
+OVR-01,Overlap (confirmed blocks),Admin/Staff,Car 2 has CONFIRMED booking window A,Try to confirm another booking on Car 2 overlapping window A,409 conflict; confirmation rejected
+OVR-02,Overlap boundary non-overlap,Admin/Staff,"Car 2 has CONFIRMED booking [start,end)",Confirm booking where new.start == existing.end,Allowed (no overlap at boundary)
+OVR-03,Overlap query correctness,Admin/Staff,Existing confirmed booking,Confirm booking fully inside existing window,Rejected (overlap detected)
+OVR-04,Overlap query correctness 2,Admin/Staff,Existing confirmed booking,Confirm booking that fully contains existing window,Rejected (overlap detected)
+OVR-05,Maintenance blocks all,Customer,Car 1 has car_unavailable date range,Customer books Car 1 overlapping maintenance,Rejected/blocked (409)
+OVR-06,Maintenance blocks confirm,Admin/Staff,Pending booking overlaps maintenance,Try to confirm booking,Rejected (409 maintenance conflict)
+OVR-07,Availability endpoint,Customer,Car 2 has CONFIRMED booking window A,Call GET /api/cars/{id}/availability,blockedDates includes window A as type=booking; does not include pending bookings
+MAN-01,Manual booking,Staff,Customer B exists; Car 3 exists,"Staff uses manual booking form
+Select customer, car, future dates
+Submit","Booking created as CONFIRMED
+created_by_role=staff"
+MAN-02,Manual booking overlap,Staff,Car 2 has CONFIRMED booking,Try manual booking overlapping confirmed window,Rejected (409)
+MAN-03,Manual booking during maintenance,Admin,Car 1 under maintenance,Try manual booking overlapping maintenance,Rejected (409)
+PAY-01,Payment init,Customer,Customer has booking (PENDING),"Open /payment/{bookingId}
+Start payment",Payment record created; status transitions expected
+PAY-02,Payment complete does NOT confirm booking,Customer,Payment exists for booking,Trigger /api/payments/complete with paymentId,"payments.status=completed
+bookings.payment_status=paid
+bookings.status remains PENDING"
+PAY-03,Payment ownership (IDOR),Customer,Customer A has payment P1; Customer B logged in,Customer B calls /api/payments/complete with Customer A's paymentId,403 Forbidden
+PAY-04,Invoice requires paid,Customer,Booking payment_status != paid,POST /api/bookings/{id}/invoice,400 Booking not paid
+PAY-05,Invoice ownership (IDOR),Customer,Customer A has PAID booking with invoice,Customer B calls GET /api/bookings/{A_booking}/invoice,403 Forbidden
+PAY-06,Invoice signed URL,Customer,Customer has PAID booking,"POST /api/bookings/{id}/invoice
+Then GET /api/bookings/{id}/invoice","Returns signed URL (temporary)
+Download works"
+NOT-01,Customer notifications list,Customer,Customer has at least 1 notification,"Open /dashboard/notifications
+Also call GET /api/notifications?page=1&page_size=10",List shows title/body/href and read status
+NOT-02,Mark read,Customer,Customer has unread notification,PATCH /api/notifications/{id} {is_read:true},"Notification is_read=true
+Unread count decreases"
+NOT-03,Bell component,Customer,Customer has unread notification,"Observe bell indicator
+Click notification",Indicator shows; click marks read and navigates if href set
+NOT-04,Cancel triggers notifications,Customer,Customer cancels booking,"Cancel booking
+Check customer + admin/staff notifications",Both parties receive notification
+NOT-05,Confirm triggers notifications,Staff,Staff confirms booking,"Confirm booking
+Check customer notification",Customer notified (booking confirmed)
+NOT-06,Reject triggers notifications,Staff,Staff rejects booking,"Reject booking
+Check customer notification",Customer notified (booking rejected)
+EXP-01,Export cars CSV,Admin,Admin logged in,Call GET /api/export/cars,Downloads CSV; headers match UI table
+EXP-02,Export bookings CSV,Admin,Admin logged in,Call GET /api/export/bookings,Downloads CSV; includes status/payment_status columns
+EXP-03,Export customers CSV,Admin,Admin logged in,Call GET /api/export/customers,Downloads CSV
+EXP-04,Export maintenance CSV,Admin,Admin logged in,Call GET /api/export/maintenance,Downloads CSV
+EXP-05,Export RBAC,Customer,Customer logged in,Call any export endpoint,Blocked (401/403)
+SEC-01,Upload auth restricted,Customer,Customer logged in,GET /api/upload/auth,403 Forbidden
+SEC-02,Upload auth allowed,Staff,Staff logged in,GET /api/upload/auth,200 OK with ImageKit auth payload
+SEC-03,Role update forbidden for self,Customer,Customer logged in,Attempt PATCH /api/users/{selfId} set role=admin,403 Forbidden (API) or DB trigger blocks
+SEC-04,Direct DB role update blocked,Customer,Customer logged in,Attempt update on public.users.role via client (if dev tools),Denied by trigger/RLS
+SEC-05,Invoice table RLS,Customer,Customer B logged in,Attempt select invoices for Customer A booking in client,RLS denies (0 rows)
+SEC-06,Booking confirm requires staff/admin,Customer,Customer logged in,PATCH /api/bookings/{id} set status=confirmed,403 Forbidden

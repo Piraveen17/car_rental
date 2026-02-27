@@ -6,7 +6,10 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -47,8 +50,8 @@
     "cmdk": "1.0.4",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "8.5.1",
-    "exceljs": "^4.4.0",
-    "expo": "latest",
+    "exceljs": "^4.1.1",
+    "expo": "^51.0.39",
     "expo-asset": "latest",
     "expo-file-system": "latest",
     "expo-gl": "latest",
@@ -67,7 +70,7 @@
     "react-day-picker": "latest",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.60.0",
-    "react-native": "latest",
+    "react-native": "^0.84.0",
     "react-resizable-panels": "^2.1.7",
     "recharts": "latest",
     "sonner": "^1.7.4",
@@ -82,14 +85,64 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/jest": "*",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.23",
+    "jest": "*",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
+    "ts-jest": "*",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1"
+    },
+    "testMatch": [
+      "**/__tests__/**/*.test.ts",
+      "**/__tests__/**/*.test.tsx",
+      "**/__tests__/unit/**/*.test.ts",
+      "**/__tests__/integration/**/*.test.ts",
+      "**/__tests__/acceptance/**/*.test.ts"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/.next/"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": ["ts-jest", {
+        "tsconfig": {
+          "jsx": "react-jsx",
+          "moduleResolution": "node",
+          "module": "commonjs",
+          "esModuleInterop": true,
+          "paths": {
+            "@/*": ["./*"]
+          }
+        }
+      }]
+    },
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json"],
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "lib/**/*.ts",
+      "app/api/**/*.ts",
+      "!**/*.d.ts",
+      "!**/node_modules/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 60,
+        "functions": 60,
+        "lines": 60,
+        "statements": 60
+      }
+    }
   }
 }

@@ -25,8 +25,9 @@ import { Filter, X } from "lucide-react";
 type Props = {
   makes: string[];
   locations: string[];
-  // Optional: allow type tags if you store car type inside features[]
   types?: string[];
+  /** If true, only render the mobile Sheet trigger button (no desktop sidebar) */
+  mobileOnly?: boolean;
 };
 
 function updateQuery(
@@ -49,7 +50,7 @@ function updateQuery(
   router.push(qs ? `${pathname}?${qs}` : pathname);
 }
 
-export function CarFiltersComponent({ makes, locations, types }: Props) {
+export function CarFiltersComponent({ makes, locations, types, mobileOnly }: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();

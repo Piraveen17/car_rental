@@ -9,8 +9,8 @@ export type NotificationCreate = {
 };
 
 /**
- * Create a notification for a single user using the service-role client.
- * This bypasses RLS and is safe to call from server route handlers.
+ * Create a notification for a single user (service-role bypasses RLS).
+ * Column names match the DB schema: message, read (not body, is_read)
  */
 export async function notifyUser(n: NotificationCreate) {
   try {
@@ -19,9 +19,9 @@ export async function notifyUser(n: NotificationCreate) {
       user_id: n.userId,
       type: n.type,
       title: n.title,
-      body: n.body ?? null,
+      message: n.body ?? "",   // DB column is "message"
       href: n.href ?? null,
-      is_read: false,
+      read: false,             // DB column is "read"
     });
     if (error) console.error("notifyUser insert error", error);
   } catch (e) {
@@ -30,7 +30,7 @@ export async function notifyUser(n: NotificationCreate) {
 }
 
 /**
- * Notify all users whose `public.users.role` is in `roles`.
+ * Notify all users with specified roles.
  */
 export async function notifyRoles(args: {
   roles: string[];
@@ -50,17 +50,21 @@ export async function notifyRoles(args: {
       console.error("notifyRoles users query error", error);
       return;
     }
-    const rows = (users || []).map((u: any) => ({
+    if (!users || users.length === 0) return;
+
+    const insertRows = users.map((u) => ({
       user_id: u.id,
       type: args.type,
       title: args.title,
-      body: args.body ?? null,
+      message: args.body ?? "",  // DB column is "message"
       href: args.href ?? null,
-      is_read: false,
+      read: false,               // DB column is "read"
     }));
-    if (rows.length === 0) return;
 
-    const { error: insertError } = await admin.from("notifications").insert(rows);
+    const { error: insertError } = await admin
+      .from("notifications")
+      .insert(insertRows);
+
     if (insertError) console.error("notifyRoles insert error", insertError);
   } catch (e) {
     console.error("notifyRoles failed", e);

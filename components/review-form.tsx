@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api-client";
 
@@ -58,6 +58,7 @@ export function ReviewForm({ carId, bookingId, onSuccess }: ReviewFormProps) {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Rate your experience</DialogTitle>
+                <DialogDescription>Share your feedback to help other renters.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="flex justify-center gap-2">

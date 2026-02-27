@@ -39,7 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .from('bookings')
       .update({
         status: 'cancelled',
-        cancelled_by: gate.user?.id === booking.user_id ? 'customer' : 'admin',
+        cancelled_by: 'admin',
         cancel_reason: note,
         cancelled_at: new Date().toISOString(),
       })

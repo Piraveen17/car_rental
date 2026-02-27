@@ -148,9 +148,7 @@ export async function POST(req: Request) {
             total_amount: totalAmount,
             status: 'confirmed', // Manual bookings usually confirmed immediately
             payment_status: paymentStatus,
-            booking_source: 'manual',
-            created_by_role: creatorRole,
-            created_by_user_id: user.id
+            booking_source: 'manual'
         })
         .select()
         .single();

@@ -11,22 +11,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { id } = await params;
     const body = await request.json();
 
-    if (body.status) {
-        if (!['pending', 'fixed'].includes(body.status)) {
-             if (body.status === 'completed' || body.status === 'fixed') body.status = 'fixed';
-             else body.status = 'pending';
-        }
+    const VALID_STATUSES = ['pending', 'in_progress', 'completed', 'cancelled'];
+    if (body.status && !VALID_STATUSES.includes(body.status)) {
+      body.status = 'pending';
     }
 
     const { data: updatedRecord, error } = await supabase
         .from('maintenance')
         .update({
-            status: body.status, 
-            description: body.description || body.issue, 
-            cost: body.cost,
-            date: body.date,
+            status: body.status,
+            description: body.description || body.issue,
+            estimated_cost: body.estimatedCost ?? body.cost,
+            start_date: body.startDate ?? body.date,
+            end_date: body.endDate,
             type: body.type,
-            car_id: body.carId || body.car_id
+            car_id: body.carId || body.car_id,
         })
         .eq('id', id)
         .select()
@@ -40,7 +39,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({
         ...updatedRecord,
         recordId: updatedRecord.id,
-        issue: updatedRecord.description
+        issue: updatedRecord.description,
+        carId: updatedRecord.car_id,
+        startDate: updatedRecord.start_date,
+        endDate: updatedRecord.end_date,
+        estimatedCost: updatedRecord.estimated_cost,
+        actualCost: updatedRecord.actual_cost,
+        completedDate: updatedRecord.completed_date,
+        mileageAtService: updatedRecord.mileage_at_service,
+        serviceProvider: updatedRecord.service_provider,
+        createdAt: updatedRecord.created_at,
+        updatedAt: updatedRecord.updated_at
     });
   } catch (error) {
     console.error("Error updating maintenance:", error);

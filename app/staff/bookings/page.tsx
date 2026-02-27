@@ -5,10 +5,13 @@ import { StaffBookingsClient } from "@/components/role-pages/bookings-client";
 import { getBaseUrlFromHeaders, normalizeListQuery } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 
-type SearchParams = Record<string, string | string[] | undefined>;
+import { createClient } from "@/lib/supabase/server";
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function StaffBookingsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { sp, page, pageSize } = normalizeListQuery(searchParams, {
+  const resolvedSearchParams = await searchParams;
+  const { sp, page, pageSize } = normalizeListQuery(resolvedSearchParams, {
     allow: [
       "q",
       "status",
@@ -27,9 +30,15 @@ export default async function StaffBookingsPage({ searchParams }: { searchParams
 
   const h = await headers();
   const cookie = h.get("cookie") ?? "";
- const url = `${getBaseUrlFromHeaders(h)}/api/bookings?${sp.toString()}`;
+  const url = `${getBaseUrlFromHeaders(h)}/api/bookings?${sp.toString()}`;
   const res = await fetch(url, { cache: "no-store", headers: { cookie } });
   const json = (await res.json()) as any;
+
+  const supabase = await createClient();
+  const { data: cars } = await supabase
+    .from("cars")
+    .select("car_id, make, model")
+    .order("make");
 
   const items = json?.items ?? [];
   const meta = json?.meta ?? { total: items.length, page, pageSize, totalPages: 1 };
@@ -60,9 +69,9 @@ export default async function StaffBookingsPage({ searchParams }: { searchParams
         <BookingsQueryControls resultsCount={total ?? items.length} />
       </div>
 
-      <StaffBookingsClient initialBookings={items || []} />
+      <StaffBookingsClient initialBookings={items || []} cars={cars || []} />
 
-      <PaginationLinks page={pageFromMeta ?? 1} totalPages={totalPages} searchParams={searchParams} pathname="/staff/bookings" />
+      <PaginationLinks page={pageFromMeta ?? 1} totalPages={totalPages} searchParams={resolvedSearchParams} pathname="/staff/bookings" />
     </div>
   );
 }

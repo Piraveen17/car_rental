@@ -43,7 +43,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil } from "lucide-react";
 import { CarPayload, CarStatus, ICar, TransmissionType } from "@/types";
-import { ImageUpload } from "@/components/ui/image-upload";
+import { ImageUpload } from "@/components/image-upload";
 import { CarsQueryControls } from "@/components/cars-query-controls";
 import { PaginationLinks } from "@/components/pagination-links";
 
@@ -346,15 +346,22 @@ export default function StaffCarsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fuelType">Fuel Type</Label>
-                  <Input
-                    id="fuelType"
+                  <Select
                     value={formData.fuelType}
-                    onChange={(e) =>
-                      setFormData({ ...formData, fuelType: e.target.value })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, fuelType: value })
                     }
-                    placeholder="Gasoline, Electric, Hybrid..."
-                    required
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select fuel type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="petrol">Petrol (Gasoline)</SelectItem>
+                      <SelectItem value="diesel">Diesel</SelectItem>
+                      <SelectItem value="electric">Electric</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
@@ -415,9 +422,8 @@ export default function StaffCarsPage() {
               <div className="space-y-2">
                  <Label>Images</Label>
                  <ImageUpload 
-                    value={formData.images?.filter(Boolean) || []} 
-                    onChange={(urls) => setFormData({...formData, images: urls})}
-                    onRemove={(url) => setFormData({...formData, images: formData.images?.filter((i) => i !== url) || []})}
+                    defaultImages={formData.images?.filter(Boolean)} 
+                    onUploadComplete={(urls) => setFormData({...formData, images: urls})} 
                  />
               </div>
 

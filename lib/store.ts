@@ -137,6 +137,13 @@ export const useAuthStore = create<AuthState>()(
       
       checkSession: async () => {
          const supabase = createClient();
+         // First check if a session exists locally (no network call)
+         // Only call getUser() (which validates server-side) if we have a session
+         const { data: { session } } = await supabase.auth.getSession();
+         if (!session) {
+           set({ user: null, isAuthenticated: false });
+           return;
+         }
          const { data: { user } } = await supabase.auth.getUser();
          
          
@@ -147,12 +154,13 @@ export const useAuthStore = create<AuthState>()(
              let name: string | undefined = user.user_metadata?.name;
              let phone: string | undefined = user.phone || undefined;
              let role: string | undefined;
+             let nicPassport: string | undefined;
 
              try {
                // Query database for role (and other fields if metadata is missing)
                const { data: profile } = await supabase
                  .from('users')
-                 .select('role,name,phone')
+                 .select('role,name,phone,nic_passport')
                  .eq('id', user.id)
                  .maybeSingle();
                
@@ -161,6 +169,7 @@ export const useAuthStore = create<AuthState>()(
                  role = profile.role;  // Database is always source of truth for role
                  name = name ?? profile.name;
                  phone = phone ?? profile.phone;
+                 nicPassport = profile.nic_passport;
                }
              } catch (error) {
                console.error("[checkSession] DB query failed:", error);
@@ -170,14 +179,14 @@ export const useAuthStore = create<AuthState>()(
              
              const mappedUser: IUser = {
                  userId: user.id,
-                 clerkUserId: user.id, // For compat
                  email: user.email || "",
                  name: name || "",
                  role: (role as UserRole) || "customer",
                  phone: phone || "",
-                 isActive: !!user.email_confirmed_at, // Use email confirmation as proxy for active
+                 nicPassport: nicPassport || "",
+                 isActive: !!user.email_confirmed_at,
                  createdAt: new Date(user.created_at),
-                 updatedAt: new Date(user.last_sign_in_at || new Date())
+                 updatedAt: new Date(user.last_sign_in_at || new Date()),
              };
              set({ user: mappedUser, isAuthenticated: true });
          } else {
@@ -307,15 +316,10 @@ export const useCarsStore = create<CarsState>((set, get) => ({
   },
 
   deleteCar: async (carId: string) => {
-    try {
-      const res = await apiClient.delete(`/cars/${carId}`);
-      if (!res.ok && res.status !== 404) {
-        throw new Error(
-          `Failed to delete car: ${res.status} ${res.statusText}`
-        );
-      }
-    } catch (err) {
-      console.info("Delete car API failed; removing locally.", err);
+    const res = await apiClient.delete(`/cars/${carId}`);
+    if (!res.ok && res.status !== 404) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData?.error || `Failed to delete car: ${res.statusText}`);
     }
 
     set((state) => ({ cars: state.cars.filter((c) => c.carId !== carId) }));
@@ -335,13 +339,14 @@ function normalizeBookingFromServer(b: any): IBooking {
     // handle field naming mismatch
     totalAmount: Number(b.totalAmount ?? b.totalPrice ?? 0),
     // ensure dates are Date objects
-    startDate: b.startDate ? new Date(b.startDate) : new Date(),
-    endDate: b.endDate ? new Date(b.endDate) : new Date(),
-    createdAt: b.createdAt ? new Date(b.createdAt) : new Date(),
-    updatedAt: b.updatedAt ? new Date(b.updatedAt) : new Date(),
+    startDate: (b.startDate || b.start_date) ? new Date(b.startDate || b.start_date) : new Date(),
+    endDate: (b.endDate || b.end_date) ? new Date(b.endDate || b.end_date) : new Date(),
+    createdAt: (b.createdAt || b.created_at) ? new Date(b.createdAt || b.created_at) : new Date(),
+    updatedAt: (b.updatedAt || b.updated_at) ? new Date(b.updatedAt || b.updated_at) : new Date(),
     
     // Ensure relations are objects if present
-    car: b.car ? normalizeCarFromServer(b.car) : undefined,
+    // Supabase returns joined tables under the relation name (b.cars), not b.car
+    car: (b.cars || b.car) ? normalizeCarFromServer(b.cars || b.car) : undefined,
     // user: b.user ? normalizeUser(b.user) : undefined // If we had normalizeUser
     bookingStatus: b.bookingStatus ?? b.status ?? "pending",
   } as IBooking;
@@ -380,16 +385,18 @@ export const useBookingsStore = create<BookingsState>((set, get) => ({
   },
 
   addBooking: async (bookingData) => {
-    const newBooking: IBooking = {
-      ...bookingData,
-      bookingId: uuidv4(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as IBooking;
-
-    const res = await apiClient.post("/bookings", newBooking);
+    // Do NOT pre-generate a bookingId — let the server (Supabase) assign it.
+    // Sending a client-generated ID creates a stale local state window.
+    const res = await apiClient.post("/bookings", {
+      carId: bookingData.carId,
+      startDate: bookingData.startDate,
+      endDate: bookingData.endDate,
+      totalAmount: bookingData.totalAmount,
+      addons: bookingData.addons,
+    });
     if (!res.ok) {
-      throw new Error(`Failed to create booking: ${res.statusText}`);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || `Failed to create booking: ${res.statusText}`);
     }
     const saved = await res.json();
     const normalizedSaved = normalizeBookingFromServer(saved);
@@ -435,13 +442,28 @@ export const useBookingsStore = create<BookingsState>((set, get) => ({
 function normalizeMaintenanceFromServer(m: any): IMaintenance {
   return {
     ...m,
-    recordId: m.recordId ?? m.id ?? m._id ?? uuidv4(),
-    carId: m.carId ?? m.car_id ?? "",
-    cost: Number(m.cost ?? 0),
-    date: m.date ? new Date(m.date) : new Date(),
-    createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
-    updatedAt: m.updatedAt ? new Date(m.updatedAt) : new Date(),
-    car: m.car ? normalizeCarFromServer(m.car) : undefined,
+    recordId: m.recordId ?? m.id ?? uuidv4(),
+    carId:    m.carId ?? m.car_id ?? "",
+    issue:    m.issue ?? m.description ?? "",
+    type:     m.type ?? "repair",
+    status:   m.status ?? "pending",
+    // DB columns are snake_case; frontend uses camelCase
+    startDate:     m.start_date  ? new Date(m.start_date)  : (m.startDate  ? new Date(m.startDate)  : new Date()),
+    endDate:       m.end_date    ? new Date(m.end_date)    : (m.endDate    ? new Date(m.endDate)    : undefined),
+    estimatedCost: Number(m.estimated_cost ?? m.estimatedCost ?? 0),
+    actualCost:    (m.actual_cost ?? m.actualCost) != null
+      ? Number(m.actual_cost ?? m.actualCost)
+      : undefined,
+    completedDate: (m.completed_date ?? m.completedDate)
+      ? new Date(m.completed_date ?? m.completedDate)
+      : undefined,
+    mileageAtService: (m.mileage_at_service ?? m.mileageAtService) != null
+      ? Number(m.mileage_at_service ?? m.mileageAtService)
+      : undefined,
+    serviceProvider: m.service_provider ?? m.serviceProvider ?? undefined,
+    car:       m.cars ? normalizeCarFromServer(m.cars) : (m.car ? normalizeCarFromServer(m.car) : undefined),
+    createdAt: m.created_at ? new Date(m.created_at) : (m.createdAt ? new Date(m.createdAt) : new Date()),
+    updatedAt: m.updated_at ? new Date(m.updated_at) : (m.updatedAt ? new Date(m.updatedAt) : new Date()),
   } as IMaintenance;
 }
 
@@ -465,16 +487,10 @@ export const useMaintenanceStore = create<MaintenanceState>((set, get) => ({
   },
 
   addRecord: async (recordData) => {
-    const newRecord: IMaintenance = {
-      ...recordData,
-      recordId: uuidv4(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as IMaintenance;
-
-    const res = await apiClient.post("/maintenance", newRecord);
+    const res = await apiClient.post("/maintenance", recordData);
     if (!res.ok) {
-      throw new Error(`Failed to create maintenance record: ${res.statusText}`);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || `Failed to create maintenance record: ${res.statusText}`);
     }
     const saved = await res.json();
     const normalized = normalizeMaintenanceFromServer(saved);
@@ -535,66 +551,42 @@ export const usePaymentsStore = create<PaymentsState>((set, get) => ({
   payments: [],
 
   initiatePayment: async (bookingId, amount) => {
-    const paymentId = `demo-pay-${Date.now()}`;
-    const newPayment: DemoPayment = {
-      id: `payment-${Date.now()}`,
+    // Send a clean payload; let the server generate the ID
+    const res = await apiClient.post("/payments", {
       bookingId,
-      paymentId,
       amount,
-      status: "pending",
-      createdAt: new Date(),
-    } as DemoPayment;
+      method: "online",
+    });
 
-    try {
-      const res = await apiClient.post("/payments", newPayment);
-
-      if (res.ok) {
-        const saved = await res.json();
-        set((s) => ({ payments: [...s.payments, saved] }));
-        return (saved.paymentId ?? saved.id ?? paymentId) as string;
-      }
-    } catch (err) {
-      console.info("Payments API not available; saving locally.", err);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || `Failed to initiate payment: ${res.statusText}`);
     }
 
-    set((s) => ({ payments: [...s.payments, newPayment] }));
+    const saved = await res.json();
+    // DB always returns 'id' (UUID) as the primary key — that is the real paymentId
+    const paymentId = (saved.id ?? saved.paymentId) as string;
+    set((s) => ({ payments: [...s.payments, { ...saved, paymentId }] }));
     return paymentId;
   },
 
   completePayment: async (paymentId) => {
-    try {
-      const res = await apiClient.post("/payments/complete", { paymentId });
+    const res = await apiClient.post("/payments/complete", { paymentId });
 
-      if (res.ok) {
-        set((state) => ({
-          payments: state.payments.map((p) =>
-            (p as any).paymentId === paymentId
-              ? { ...(p as any), status: "paid" }
-              : p
-          ),
-        }));
-        return true;
-      }
-    } catch (err) {
-      console.info(
-        "Complete payment API not available; trying local update.",
-        err
-      );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || "Payment completion failed");
     }
 
-    const had = get().payments.some((p) => (p as any).paymentId === paymentId);
-    if (had) {
-      set((state) => ({
-        payments: state.payments.map((p) =>
-          (p as any).paymentId === paymentId
-            ? { ...(p as any), status: "paid" }
-            : p
-        ),
-      }));
-      return true;
-    }
-
-    return false;
+    // Mark local state as completed
+    set((state) => ({
+      payments: state.payments.map((p) =>
+        (p as any).id === paymentId || (p as any).paymentId === paymentId
+          ? { ...(p as any), status: "completed" }
+          : p
+      ),
+    }));
+    return true;
   },
 
   getPaymentStatus: (paymentId) => {

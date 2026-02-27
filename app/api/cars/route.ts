@@ -18,16 +18,15 @@ function toNum(v: string | null) {
 export async function GET(req: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // Check availability logic using admin/staff check
-    // If usage of RPC is problematic for public (unauthenticated), we handle public case.
-    // user might be null.
     
+    // Use getSession() first (local check, no 403) before getUser() (server validation)
     let isAdminOrStaff = false;
-    if (user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      try {
         const { data } = await supabase.rpc('is_role', { roles: ['admin', 'staff'] });
         isAdminOrStaff = !!data;
+      } catch { /* is_role RPC not available, default to false */ }
     }
 
     const url = new URL(req.url);

@@ -2,9 +2,55 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/auth/guards';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { z } from 'zod';
+import { toDateOnly } from '@/lib/dates/toDateOnly';
+
+const updateBookingSchema = z.object({
+  status: z.enum(['pending', 'confirmed', 'rejected', 'cancelled', 'completed']).optional(),
+  bookingStatus: z.enum(['pending', 'confirmed', 'rejected', 'cancelled', 'completed']).optional(),
+  paymentStatus: z.enum(['pending', 'paid', 'failed', 'refunded']).optional(),
+  payment_status: z.enum(['pending', 'paid', 'failed', 'refunded']).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  carId: z.string().optional(),
+  totalAmount: z.number().optional(),
+  total_amount: z.number().optional(),
+  paymentMethod: z.enum(['cash', 'bank_transfer', 'card', 'other']).optional(),
+  payment_method: z.enum(['cash', 'bank_transfer', 'card', 'other']).optional(),
+  paidAt: z.string().optional(),
+  paid_at: z.string().optional(),
+});
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   return PATCH(request, { params })
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const supabase = await createClient();
+    
+    // Only admins should be able to hard delete bookings
+    const authz = await requireRole(supabase, ['admin']);
+    if (!authz.ok) return authz.errorResponse;
+
+    const { error } = await supabase
+      .from('bookings')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      }
+      throw error;
+    }
+
+    return NextResponse.json({ message: 'Booking deleted successfully' });
+  } catch (error: any) {
+    console.error("Error deleting booking:", error);
+    return NextResponse.json({ error: 'Failed to delete booking' }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -29,33 +75,41 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const body = await request.json();
 
+    const parsed = updateBookingSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid payload', details: parsed.error.format() }, { status: 400 });
+    }
+    const safeBody = parsed.data;
+
     // Sanitize and map payload to DB schema
     // Client sends camelCase (bookingId, userId, carId...) and relations (car, user).
     // DB needs snake_case and no relations.
     const updates: any = {};
-    if (body.status) updates.status = body.status;
-    if (body.bookingStatus) updates.status = body.bookingStatus;
-    if (body.paymentStatus !== undefined) updates.payment_status = body.paymentStatus;
-    // Map other fields as needed
-
-    // Optional editable fields
-    if (body.startDate) updates.start_date = body.startDate;
-    if (body.endDate) updates.end_date = body.endDate;
-    if (body.carId) updates.car_id = body.carId;
+    if (safeBody.status) updates.status = safeBody.status;
+    if (safeBody.bookingStatus) updates.status = safeBody.bookingStatus;
+    if (safeBody.paymentStatus !== undefined) updates.payment_status = safeBody.paymentStatus;
     
-    // If body has direct snake_case keys (sometimes client sends them), keep them
-    if (body.payment_status) updates.payment_status = body.payment_status;
+    // Optional editable fields
+    if (safeBody.startDate) updates.start_date = safeBody.startDate;
+    if (safeBody.endDate) updates.end_date = safeBody.endDate;
+    if (safeBody.carId) updates.car_id = safeBody.carId;
+    if (safeBody.totalAmount !== undefined) updates.total_amount = safeBody.totalAmount;
+    if (safeBody.total_amount !== undefined) updates.total_amount = safeBody.total_amount;
+    
+    // Payment fields
+    if (safeBody.payment_status) updates.payment_status = safeBody.payment_status;
+    if (safeBody.paymentMethod) updates.payment_method = safeBody.paymentMethod;
+    if (safeBody.payment_method) updates.payment_method = safeBody.payment_method;
+    if (safeBody.paidAt) updates.paid_at = safeBody.paidAt;
+    if (safeBody.paid_at) updates.paid_at = safeBody.paid_at;
 
     // Normalize status casing
     if (updates.status) updates.status = String(updates.status).toLowerCase();
     if (updates.payment_status) updates.payment_status = String(updates.payment_status).toLowerCase();
 
-    // Validate status
-    if (updates.status) {
-      const allowed = ['pending', 'confirmed', 'rejected', 'cancelled', 'completed'];
-      if (!allowed.includes(updates.status)) {
-        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-      }
+    // Auto-set paid_at if payment_status is paid and paid_at is not provided
+    if (updates.payment_status === 'paid' && !updates.paid_at && (before as any).payment_status !== 'paid') {
+      updates.paid_at = new Date().toISOString();
     }
 
     // Prevent empty updates
@@ -76,8 +130,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         .eq('car_id', carId)
         .eq('status', 'confirmed')
         .neq('id', id)
-        .lt('start_date', new Date(end).toISOString())
-        .gt('end_date', new Date(start).toISOString())
+        .lt('start_date', toDateOnly(end))
+        .gt('end_date', toDateOnly(start))
         .maybeSingle();
 
       if (conflict) {
@@ -88,8 +142,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         .from('car_unavailable')
         .select('id')
         .eq('car_id', carId)
-        .lt('start_date', new Date(end).toISOString())
-        .gt('end_date', new Date(start).toISOString())
+        .lt('start_date', toDateOnly(end))
+        .gt('end_date', toDateOnly(start))
         .maybeSingle();
 
       if (maintenanceConflict) {
@@ -142,9 +196,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           user_id: userId,
           type: 'booking',
           title,
-          body: finalBody,
-          href: `/dashboard/bookings`,
-          is_read: false,
+          message: finalBody,
+          href: `/dashboard`,
+          read: false,
         });
       } catch (e) {
         console.warn('Notification insert failed (booking update):', e);

@@ -6,16 +6,17 @@ import { AdminMaintenanceClient } from "@/components/role-pages/maintenance-clie
 import { getBaseUrlFromHeaders, normalizeListQuery } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 
-type SearchParams = Record<string, string | string[] | undefined>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function AdminMaintenancePage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
-  const { sp, page, pageSize } = normalizeListQuery(searchParams, {
+  const resolvedSearchParams = await searchParams;
+  const { sp, page, pageSize } = normalizeListQuery(resolvedSearchParams, {
     allow: ["q", "status", "car_id", "sort", "order", "page", "page_size"],
-    defaultSort: "date",
+    defaultSort: "created_at",
     defaultOrder: "desc",
   });
 
@@ -74,7 +75,7 @@ export default async function AdminMaintenancePage({
       <PaginationLinks
         page={pageFromMeta ?? 1}
         totalPages={totalPages}
-        searchParams={searchParams}
+        searchParams={resolvedSearchParams}
         pathname="/admin/maintenance"
       />
     </div>

@@ -11,8 +11,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { id } = await params;
     const body = await request.json();
 
+    // Accept both "read" and "is_read" from client, store as "read" (DB column name)
     const updates: any = {};
-    if (typeof body.is_read === "boolean") updates.is_read = body.is_read;
+    if (typeof body.read === "boolean") updates.read = body.read;
+    if (typeof body.is_read === "boolean") updates.read = body.is_read;
 
     const { data, error } = await supabase
       .from("notifications")

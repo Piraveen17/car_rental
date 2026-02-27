@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from("bookings")
-    .select("*, cars (make, model), users (name, email)")
+    .select("*, cars (make, model), users!bookings_user_id_fkey (name, email)")
     .order(sort, { ascending: order === "asc" })
     .range(0, 9999);
 
@@ -41,8 +41,8 @@ export async function GET(req: Request) {
         `id.ilike.%${q}%`,
         `cars.make.ilike.%${q}%`,
         `cars.model.ilike.%${q}%`,
-        `users.name.ilike.%${q}%`,
-        `users.email.ilike.%${q}%`,
+        `users!bookings_user_id_fkey.name.ilike.%${q}%`,
+        `users!bookings_user_id_fkey.email.ilike.%${q}%`,
       ].join(",")
     );
   }
@@ -60,6 +60,8 @@ export async function GET(req: Request) {
     startDate: b.start_date,
     endDate: b.end_date,
     totalAmount: b.total_amount,
+    paymentMethod: b.payment_method || "",
+    paidAt: b.paid_at || "",
     paymentStatus: b.payment_status,
     bookingStatus: b.status,
     createdAt: b.created_at,
@@ -75,6 +77,8 @@ export async function GET(req: Request) {
     "startDate",
     "endDate",
     "totalAmount",
+    "paymentMethod",
+    "paidAt",
     "paymentStatus",
     "bookingStatus",
     "createdAt",

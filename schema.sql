@@ -113,7 +113,7 @@ create table if not exists public.bookings (
   start_date timestamptz not null,
   end_date timestamptz not null,
   total_amount numeric not null,
-  status text default 'pending' check (status in ('pending', 'confirmed', 'cancelled', 'completed')),
+  status text default 'pending' check (status in ('pending', 'confirmed', 'rejected', 'cancelled', 'completed')),
   payment_status text default 'pending' check (payment_status in ('pending', 'paid', 'failed')),
   booking_source text default 'online' check (booking_source in ('online', 'manual')),
   addons jsonb default '{}'::jsonb, -- Stores selected addons e.g. {driver: true}

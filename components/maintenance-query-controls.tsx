@@ -8,18 +8,18 @@ export function MaintenanceQueryControls({ resultsCount }: Props) {
   return (
     <SimpleQueryControls
       resultsCount={resultsCount}
-      placeholder="Search issue, type, car…"
+      placeholder="Search description, type, car…"
       statusOptions={[
-        { value: "pending", label: "Pending" },
-        { value: "fixed", label: "Fixed" },
+        { value: "pending",     label: "Pending" },
+        { value: "in_progress", label: "In Progress" },
+        { value: "completed",   label: "Completed" },
+        { value: "cancelled",   label: "Cancelled" },
       ]}
       sortOptions={[
-        { value: "date:desc", label: "Date (newest)" },
-        { value: "date:asc", label: "Date (oldest)" },
-        { value: "cost:desc", label: "Cost (high → low)" },
-        { value: "cost:asc", label: "Cost (low → high)" },
-        { value: "created_at:desc", label: "Created (newest)" },
-        { value: "created_at:asc", label: "Created (oldest)" },
+        { value: "created_at:desc", label: "Newest first" },
+        { value: "created_at:asc",  label: "Oldest first" },
+        { value: "start_date:desc", label: "Start date (latest)" },
+        { value: "start_date:asc",  label: "Start date (earliest)" },
       ]}
     />
   );

@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const q = (sp.get('q') || '').trim().toLowerCase();
     const status = (sp.get('status') || '').trim();
     const carId = (sp.get('car_id') || sp.get('carId') || '').trim();
-    const sort = sp.get('sort') || 'date';
+    const sort = sp.get('sort') || 'created_at';
     const order = (sp.get('order') || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
 
     let query = supabase
@@ -49,7 +49,17 @@ export async function GET(request: Request) {
     const formattedRecords = (records || []).map(r => ({
         ...r,
         recordId: r.id, // Map id to recordId for client compatibility
-        issue: r.description // Map description to issue for client compatibility
+        issue: r.description, // Map description to issue for client compatibility
+        carId: r.car_id,
+        startDate: r.start_date,
+        endDate: r.end_date,
+        estimatedCost: r.estimated_cost,
+        actualCost: r.actual_cost,
+        completedDate: r.completed_date,
+        mileageAtService: r.mileage_at_service,
+        serviceProvider: r.service_provider,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at
     }));
 
     return NextResponse.json({
@@ -78,28 +88,31 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     
-    // Accept camelCase from frontend (newRecord in store.ts has camelCase)
-    // Map to snake_case for DB
-    const { carId, issue, date, cost, type, description } = body;
+    const { carId, issue, estimatedCost, cost, type, startDate, date } = body;
     const dbCarId = carId || body.car_id;
-    const dbIssue = issue || description || body.description;
+    const dbDescription = issue || body.description;
+    const dbStartDate = startDate || date;
+    const dbEstimatedCost = estimatedCost ?? cost ?? 0;
 
-    // Sanitize status to ensure it matches DB constraint (pending | fixed)
+    // Validate status against DB CHECK constraint
+    const VALID_STATUSES = ['pending', 'in_progress', 'completed', 'cancelled'];
     let status = body.status || 'pending';
-    if (!['pending', 'fixed'].includes(status)) {
-        if (status === 'completed' || status === 'fixed') status = 'fixed';
-        else status = 'pending'; // Default everything else (scheduled, in_progress) to pending
-    }
+    if (!VALID_STATUSES.includes(status)) status = 'pending';
+
+    // Validate type against DB CHECK constraint
+    const VALID_TYPES = ['oil_change','tire_rotation','brake_service','engine_repair','transmission','electrical','body_work','inspection','repair','other'];
+    let type_val = type || 'repair';
+    if (!VALID_TYPES.includes(type_val)) type_val = 'repair';
 
     const { data: record, error } = await supabase
       .from('maintenance')
       .insert({
           car_id: dbCarId,
-          type: type || 'repair', 
-          description: dbIssue,
-          date,
-          cost,
-          status: status
+          type: type_val,
+          description: dbDescription,
+          start_date: dbStartDate,
+          estimated_cost: dbEstimatedCost,
+          status,
       })
       .select()
       .single();
@@ -109,8 +122,17 @@ export async function POST(request: Request) {
     return NextResponse.json({
         ...record,
         recordId: record.id,
-        // issue: record.description // optional, frontend logic handles it? IMaintenance has issue, DB has description
-        issue: record.description
+        issue: record.description,
+        carId: record.car_id,
+        startDate: record.start_date,
+        endDate: record.end_date,
+        estimatedCost: record.estimated_cost,
+        actualCost: record.actual_cost,
+        completedDate: record.completed_date,
+        mileageAtService: record.mileage_at_service,
+        serviceProvider: record.service_provider,
+        createdAt: record.created_at,
+        updatedAt: record.updated_at
     }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating maintenance:", error);

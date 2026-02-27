@@ -38,9 +38,10 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
-const statusConfig = {
-  pending: { label: "Pending Confirmation", color: "bg-warning text-warning-foreground", icon: Clock },
+const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+  pending: { label: "Awaiting Confirmation", color: "bg-warning text-warning-foreground", icon: Clock },
   confirmed: { label: "Confirmed", color: "bg-success text-success-foreground", icon: CheckCircle2 },
+  rejected: { label: "Rejected", color: "bg-destructive text-destructive-foreground", icon: XCircle },
   cancelled: { label: "Cancelled", color: "bg-destructive text-destructive-foreground", icon: XCircle },
   completed: { label: "Completed", color: "bg-muted text-muted-foreground", icon: CheckCircle2 },
 }
@@ -79,7 +80,7 @@ export default function DashboardPage() {
       .filter((b) => b.userId === user.userId) 
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .map((b) => {
-        const car = cars.find((c) => c.carId === b.carId)
+        const car = b.car || cars.find((c) => c.carId === b.carId)
         return {
           id: b.bookingId,
           message: `${car?.make} ${car?.model} is ${statusConfig[b.bookingStatus]?.label || b.bookingStatus}`,
@@ -136,12 +137,12 @@ export default function DashboardPage() {
     .filter((b) => b.userId === user.userId)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-  const upcomingBookings = userBookings.filter(
-    (b) => b.bookingStatus === "confirmed" && new Date(b.startDate) > new Date(),
+  const confirmedBookings = userBookings.filter(
+    (b) => b.bookingStatus === "confirmed"
   )
 
-  const pastBookings = userBookings.filter(
-    (b) => b.bookingStatus === "completed" || new Date(b.endDate) < new Date(),
+  const completedBookings = userBookings.filter(
+    (b) => b.bookingStatus === "completed"
   )
 
   const pendingBookings = userBookings.filter((b) => b.bookingStatus === "pending")
@@ -185,8 +186,8 @@ export default function DashboardPage() {
                       <CheckCircle2 className="h-6 w-6 text-success" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{upcomingBookings.length}</p>
-                      <p className="text-sm text-muted-foreground">Upcoming</p>
+                      <p className="text-2xl font-bold">{confirmedBookings.length}</p>
+                      <p className="text-sm text-muted-foreground">Confirmed</p>
                     </div>
                   </div>
                 </CardContent>
@@ -202,7 +203,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{pendingBookings.length}</p>
-                      <p className="text-sm text-muted-foreground">Pending Payment</p>
+                      <p className="text-sm text-muted-foreground">Awaiting Confirmation</p>
                     </div>
                   </div>
                 </CardContent>
@@ -217,7 +218,7 @@ export default function DashboardPage() {
                       <Car className="h-6 w-6 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{pastBookings.length}</p>
+                      <p className="text-2xl font-bold">{completedBookings.length}</p>
                       <p className="text-sm text-muted-foreground">Completed</p>
                     </div>
                   </div>
@@ -240,7 +241,7 @@ export default function DashboardPage() {
                       </p>
                       <div className="space-y-2">
                         {pendingBookings.map((booking) => {
-                          const car = cars.find((c) => c.carId === booking.carId)
+                          const car = booking.car || cars.find((c) => c.carId === booking.carId)
                           return (
                             <div
                               key={booking.bookingId}
@@ -255,9 +256,11 @@ export default function DashboardPage() {
                                   {format(new Date(booking.endDate), "MMM d, yyyy")}
                                 </p>
                               </div>
-                              <Button size="sm" asChild>
-                                <Link href={`/payment/${booking.bookingId}`}>Pay ${booking.totalAmount}</Link>
-                              </Button>
+                              <div className="text-right">
+                                <span className="text-warning text-sm font-semibold">
+                                  Awaiting manual payment
+                                </span>
+                              </div>
                             </div>
                           )
                         })}
@@ -290,7 +293,7 @@ export default function DashboardPage() {
                   <div className="space-y-4">
                     <AnimatePresence initial={false}>
                       {userBookings.map((booking) => {
-                        const car = cars.find((c) => c.carId === booking.carId)
+                        const car = booking.car || cars.find((c) => c.carId === booking.carId)
                         const status = statusConfig[booking.bookingStatus] || statusConfig.pending
                         const StatusIcon = status.icon
 
@@ -322,7 +325,35 @@ export default function DashboardPage() {
                                 <StatusIcon className="h-3 w-3 mr-1" />
                                 {status.label}
                               </Badge>
-                              <span className="font-semibold">${booking.totalAmount}</span>
+                              <span className="font-semibold">${booking.totalAmount || (booking as any).total_amount || 0}</span>
+                              {booking.paymentStatus === 'paid' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      // First try to GET, if it fails because it doesn't exist, we can't POST as customer 
+                                      // Wait, the POST route allows generating it if they own the booking.
+                                      // Let's use GET and fallback to POST, or just POST.
+                                      // Actually, requirements say "GET /api/bookings/[id]/invoice for an unpaid booking -> error"
+                                      // But POST /api/bookings/[id]/invoice returns existing url if it exists, or generates.
+                                      toast({ title: "Loading...", description: "Fetching invoice..." });
+                                      const res = await fetch(`/api/bookings/${booking.bookingId}/invoice`, { method: 'POST' });
+                                      const data = await res.json();
+                                      if (data.url) {
+                                        window.open(data.url, '_blank');
+                                      } else {
+                                        throw new Error(data.error || "Failed to load invoice");
+                                      }
+                                    } catch (e: any) {
+                                      toast({ title: "Error", description: e.message, variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Invoice
+                                </Button>
+                              )}
                               {booking.invoiceUrl && (
                                 <Button variant="ghost" size="icon" asChild>
                                   <Link href={booking.invoiceUrl} target="_blank">

@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const q = (sp.get("q") || "").trim().toLowerCase();
   const status = (sp.get("status") || "").trim();
   const carId = (sp.get("car_id") || sp.get("carId") || "").trim();
-  const sort = sp.get("sort") || "date";
+  const sort = sp.get("sort") || "start_date";
   const order = (sp.get("order") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
   const format = (sp.get("format") || "csv").toLowerCase() === "xlsx" ? "xlsx" : "csv";
 
@@ -39,8 +39,8 @@ export async function GET(req: Request) {
     car: `${r.cars?.make || ""} ${r.cars?.model || ""}`.trim(),
     type: r.type,
     issue: r.description,
-    date: r.date,
-    cost: r.cost,
+    date: r.start_date,
+    cost: r.estimated_cost,
     status: r.status,
     createdAt: r.created_at,
   }));

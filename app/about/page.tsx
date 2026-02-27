@@ -78,7 +78,7 @@ export default function AboutPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.7 }}
-              src="/assets/car-rental.jpg"
+              src="/luxury-sports-car-3d-render.jpg"
               alt="story image"
               className="rounded-xl shadow-xl w-full lg:w-1/2"
             />

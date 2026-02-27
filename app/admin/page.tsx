@@ -46,19 +46,19 @@ export default function AdminDashboardPage() {
   ).length;
 
   const pendingBookings = bookings.filter(
-    (b) => b.bookingStatus === "pending_payment"
+    (b) => b.paymentStatus === "pending"
   ).length;
 
   const activeCars = cars.filter((c) => c.status === "active").length;
   const maintenanceCars = cars.filter((c) => c.status === "maintenance").length;
 
-  const totalCustomers = users.filter((u) => u.roles?.includes("customer")).length;
+  const totalCustomers = users.filter((u) => u.role === "customer").length;
 
   const pendingMaintenance = maintenanceRecords.filter(
     (m) => m.status === "pending"
   ).length;
   const maintenanceCosts = maintenanceRecords.reduce(
-    (sum, m) => sum + m.cost,
+    (sum, m) => sum + (m.estimatedCost || 0),
     0
   );
 

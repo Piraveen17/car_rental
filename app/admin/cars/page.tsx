@@ -212,14 +212,23 @@ export default function AdminCarsPage() {
   // Confirm delete (executes deletion)
   const confirmDelete = async () => {
     if (!carToDelete) return;
-    await deleteCar(carToDelete.carId);
-    toast({
-      title: "Car deleted",
-      description: `${carToDelete.make} ${carToDelete.model} has been removed from the fleet.`,
-    });
-    await fetchCars(qs);
-    setIsDeleteDialogOpen(false);
-    setCarToDelete(null);
+    try {
+      await deleteCar(carToDelete.carId);
+      toast({
+        title: "Car deleted",
+        description: `${carToDelete.make} ${carToDelete.model} has been removed from the fleet.`,
+      });
+      await fetchCars(qs);
+    } catch (err: any) {
+      toast({
+        title: "Deletion Failed",
+        description: err.message || "Failed to delete the car.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setCarToDelete(null);
+    }
   };
 
   // Cancel delete
@@ -380,15 +389,22 @@ export default function AdminCarsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fuelType">Fuel Type</Label>
-                  <Input
-                    id="fuelType"
+                  <Select
                     value={formData.fuelType}
-                    onChange={(e) =>
-                      setFormData({ ...formData, fuelType: e.target.value })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, fuelType: value })
                     }
-                    placeholder="Gasoline, Electric, Hybrid..."
-                    required
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select fuel type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="petrol">Petrol (Gasoline)</SelectItem>
+                      <SelectItem value="diesel">Diesel</SelectItem>
+                      <SelectItem value="electric">Electric</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>

@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireUser } from '@/lib/auth/guards';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { COMPANY } from '@/lib/config/company';
+import { generateInvoiceNo } from '@/lib/invoices/invoiceNumber';
 
 async function isAdminOrStaff(supabase: any) {
   try {
@@ -80,7 +82,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // 1) Fetch booking with details (service role, then enforce auth/ownership)
     const { data: booking, error: bookingError } = await admin
       .from('bookings')
-      .select('*, cars(make, model, year, price_per_day), users(email, name, phone, nic_passport), booking_addons(qty, unit_price, total, addons(name))')
+      .select('*, cars(make, model, year, price_per_day), users!bookings_user_id_fkey(email, name, phone, nic_passport)')
       .eq('id', bookingId)
       .single();
 
@@ -117,21 +119,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     doc.text('INVOICE', 105, 20, { align: 'center' });
 
     doc.setFontSize(10);
-    doc.text('DriveEase Rentals', 14, 30);
-    doc.text('123 Main Street, Cityville', 14, 35);
-    doc.text('contact@driveease.com', 14, 40);
+    doc.text(COMPANY.name, 14, 30);
+    doc.text(COMPANY.address, 14, 35);
+    doc.text(COMPANY.email, 14, 40);
+    doc.text(COMPANY.phone, 14, 45);
 
-    const invoiceNo = `INV-${new Date().getFullYear()}-${bookingId.slice(0, 6).toUpperCase()}`;
+    const invoiceNo = generateInvoiceNo(bookingId);
     doc.text(`Invoice No: ${invoiceNo}`, 140, 30);
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 140, 35);
     doc.text(`Booking Ref: ${bookingId}`, 140, 40);
 
-    doc.text('Bill To:', 14, 55);
+    doc.text('Bill To:', 14, 60);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${booking.users?.name || 'Customer'}`, 14, 60);
+    doc.text(`${booking.users?.name || 'Customer'}`, 14, 65);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${booking.users?.email || ''}`, 14, 65);
-    doc.text(`${booking.users?.phone || ''}`, 14, 70);
+    doc.text(`${booking.users?.email || ''}`, 14, 70);
+    doc.text(`${booking.users?.phone || ''}`, 14, 75);
+
+    // Payment Info
+    doc.text('Payment Info:', 140, 60);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Method: ${booking.payment_method || 'N/A'}`, 140, 65);
+    doc.text(`Paid: ${booking.paid_at ? new Date(booking.paid_at).toLocaleDateString() : 'N/A'}`, 140, 70);
 
     const rows: any[] = [];
     const days = Math.ceil(
@@ -146,15 +155,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       `$${Number(booking.base_amount || days * Number(booking.cars?.price_per_day)).toFixed(2)}`,
     ]);
 
-    if (booking.booking_addons && booking.booking_addons.length > 0) {
-      booking.booking_addons.forEach((ad: any) => {
-        rows.push([
-          `Add-on: ${ad.addons?.name}`,
-          `${ad.qty}`,
-          `$${Number(ad.unit_price).toFixed(2)}`,
-          `$${Number(ad.total).toFixed(2)}`,
-        ]);
-      });
+    // Addons from JSONB
+    if (booking.addons && typeof booking.addons === 'object') {
+      const addons = booking.addons as Record<string, any>;
+      if (addons.driver) rows.push(['Add-on: Additional Driver', '1', '-', '-']);
+      if (addons.delivery) rows.push(['Add-on: Vehicle Delivery', '1', '-', '-']);
+      if (addons.extraKmQty) rows.push([`Add-on: Extra KM (${addons.extraKmQty} km)`, '-', '-', '-']);
     }
 
     rows.push(['', '', 'Total', `$${Number(booking.total_amount).toFixed(2)}`]);

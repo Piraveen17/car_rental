@@ -13,7 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useCarsStore, useBookingsStore, useAuthStore } from "@/lib/store";
+import { isProfileComplete } from "@/lib/profile/isProfileComplete";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import type { DateRange } from "react-day-picker";
 import {
   MapPin,
@@ -36,7 +38,7 @@ export default function CarDetailsPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const { cars } = useCarsStore();
+  const { cars, fetchCars } = useCarsStore();
   const { bookings, addBooking } = useBookingsStore();
   const { user, isAuthenticated } = useAuthStore();
   const { toast } = useToast();
@@ -49,6 +51,7 @@ export default function CarDetailsPage({
   });
   const [addonsTotal, setAddonsTotal] = useState(0);
   const [isBooking, setIsBooking] = useState(false);
+  const [carsLoading, setCarsLoading] = useState(false);
   
   // Success Modal State
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -56,9 +59,35 @@ export default function CarDetailsPage({
 
   const car = cars.find((c) => c.carId === id);
 
+  // If cars store is empty (direct navigation / page refresh), fetch the car
+  useEffect(() => {
+    if (cars.length === 0 && !carsLoading) {
+      setCarsLoading(true);
+      fetchCars().finally(() => setCarsLoading(false));
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
   const carBookings = useMemo(() => {
     return bookings.filter((b) => b.carId === id);
   }, [bookings, id]);
+
+  const days = useMemo(() => {
+     if (!selectedRange?.from || !selectedRange?.to) return 0;
+     return Math.ceil((selectedRange.to.getTime() - selectedRange.from.getTime()) / (1000 * 60 * 60 * 24));
+  }, [selectedRange]);
+
+  // Show spinner while store is loading — prevents premature "Not Found"
+  if (!car && carsLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!car) {
     return (
@@ -77,10 +106,7 @@ export default function CarDetailsPage({
     );
   }
 
-  const days = useMemo(() => {
-     if (!selectedRange?.from || !selectedRange?.to) return 0;
-     return Math.ceil((selectedRange.to.getTime() - selectedRange.from.getTime()) / (1000 * 60 * 60 * 24));
-  }, [selectedRange]);
+
 
   const calculateTotal = () => {
     const baseTotal = days * car.pricePerDay;
@@ -94,14 +120,28 @@ export default function CarDetailsPage({
         description: "You need to be logged in to book a car.",
         variant: "destructive",
         action: (
-          <Button variant="outline" size="sm" onClick={() => router.push(`/login?callbackUrl=/cars/${id}`)}>
+          <ToastAction altText="Log in" onClick={() => router.push(`/login?callbackUrl=/cars/${id}`)}>
             <LogIn className="mr-2 h-4 w-4" />
             Log in
-          </Button>
+          </ToastAction>
         ),
       });
       // Optionally auto-redirect after a delay, or just let users click
       // router.push(`/login?callbackUrl=/cars/${id}`);
+      return;
+    }
+
+    if (user && !isProfileComplete(user as any)) {
+      toast({
+        title: "Profile Incomplete",
+        description: "Please complete your profile (name, phone, NIC/Passport) before booking.",
+        variant: "destructive",
+        action: (
+          <ToastAction altText="Update Profile" onClick={() => router.push(`/dashboard/profile?callbackUrl=/cars/${id}`)}>
+            Update Profile
+          </ToastAction>
+        ),
+      });
       return;
     }
 
@@ -340,7 +380,7 @@ export default function CarDetailsPage({
              <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Customer Reviews</h2>
                 {user && (
-                    <ReviewsAuthCheck carId={car.carId} userId={user.userId} onReviewSuccess={() => window.location.reload()} />
+                    <ReviewsAuthCheck carId={car.carId} userId={user.userId} onReviewSuccess={() => router.refresh()} />
                 )}
              </div>
              <ReviewsSection carId={car.carId} />
@@ -370,7 +410,7 @@ import { apiClient } from "@/lib/api-client";
 
 function ReviewsSection({ carId }: { carId: string }) {
     const [reviews, setReviews] = useState<any[]>([]);
-    const [stats, setStats] = useState({ count: 0, average: 0 });
+    const [stats, setStats] = useState({ count: 0, averageRating: 0 });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

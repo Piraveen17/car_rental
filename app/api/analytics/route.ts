@@ -54,14 +54,14 @@ export async function GET(req: Request) {
     // Maintenance cost in range
     const { data: maintenance, error: maintErr } = await supabase
       .from('maintenance')
-      .select('id, cost, date')
-      .gte('date', dateFrom)
-      .lte('date', dateTo);
+      .select('id, actual_cost, estimated_cost, start_date')
+      .gte('start_date', dateFrom)
+      .lte('start_date', dateTo);
     if (maintErr) throw maintErr;
 
     const totalRevenue = (paidBookings || []).reduce((sum: number, b: any) => sum + Number(b.total_amount || 0), 0);
     const totalBookings = Number(allBookingsCount || 0);
-    const maintenanceCosts = (maintenance || []).reduce((sum: number, m: any) => sum + Number(m.cost || 0), 0);
+    const maintenanceCosts = (maintenance || []).reduce((sum: number, m: any) => sum + Number(m.actual_cost || m.estimated_cost || 0), 0);
 
     // Build month buckets
     const monthBuckets: Record<string, { month: string; bookings: number; revenue: number }> = {};

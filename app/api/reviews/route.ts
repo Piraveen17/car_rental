@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     // 3. Booking matches car
     const { data: booking, error: bookingError } = await supabase
         .from('bookings')
-        .select('id, status, car_id')
+        .select('id, status, car_id, end_date')
         .eq('id', bookingId)
         .eq('user_id', user.id)
         .single();
@@ -63,7 +63,6 @@ export async function POST(req: Request) {
             booking_id: bookingId,
             rating,
             comment,
-            is_approved: true // Auto-approve as per prompt
         })
         .select()
         .single();

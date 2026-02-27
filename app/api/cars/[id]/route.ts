@@ -84,7 +84,15 @@ export async function DELETE(
 
     const { id } = await params;
     const { error } = await supabase.from("cars").delete().eq("car_id", id);
-    if (error) throw error;
+    if (error) {
+      if (error.code === "23503") {
+        return NextResponse.json(
+          { error: "Cannot delete this car because it has associated bookings or maintenance records. Please set its status to Inactive instead." },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

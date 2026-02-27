@@ -1,13 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
@@ -16,6 +15,12 @@ import {
 } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Car, Calendar } from "lucide-react";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 const COLORS = [
   "hsl(var(--chart-1))",
@@ -39,7 +44,50 @@ export type AnalyticsPayload = {
   revenueByLocation: Array<{ name: string; value: number }>;
 };
 
+// --- Chart Configs ---
+const revenueChartConfig: ChartConfig = {
+  revenue: {
+    label: "Revenue",
+    color: "hsl(var(--primary))",
+  },
+};
+
+const bookingsChartConfig: ChartConfig = {
+  bookings: {
+    label: "Bookings",
+    color: "hsl(var(--chart-2))",
+  },
+};
+
+const locationChartConfig: ChartConfig = {
+  value: {
+    label: "Revenue",
+    color: "hsl(var(--chart-3))",
+  },
+};
+
 export function AdminAnalyticsDashboard({ analytics }: { analytics: AnalyticsPayload }) {
+  // Prep pie chart data with fills
+  const pieData = useMemo(() => {
+    return analytics.mostRentedCars.map((item, i) => ({
+      ...item,
+      fill: COLORS[i % COLORS.length],
+    }));
+  }, [analytics.mostRentedCars]);
+
+  const pieConfig: ChartConfig = useMemo(() => {
+    const config: ChartConfig = {
+      value: { label: "Bookings" },
+    };
+    pieData.forEach((item) => {
+      config[item.name] = {
+        label: item.name,
+        color: item.fill,
+      };
+    });
+    return config;
+  }, [pieData]);
+
   return (
     <div className="space-y-6">
       {/* Key Metrics */}
@@ -103,113 +151,128 @@ export function AdminAnalyticsDashboard({ analytics }: { analytics: AnalyticsPay
 
       {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-6">
+        {/* Monthly Revenue Chart */}
         <Card>
           <CardHeader>
             <CardTitle>Monthly Revenue</CardTitle>
             <CardDescription>Revenue trend for selected range</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartContainer config={revenueChartConfig} className="h-[300px] w-full">
+              <BarChart accessibilityLayer data={analytics.monthlyData} margin={{ left: 12, right: 12 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => `$${value}`}
+                />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+                <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
           </CardContent>
         </Card>
 
+        {/* Monthly Bookings Chart */}
         <Card>
           <CardHeader>
             <CardTitle>Monthly Bookings</CardTitle>
             <CardDescription>Number of paid bookings per month</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={analytics.monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Line type="monotone" dataKey="bookings" stroke="hsl(var(--chart-2))" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartContainer config={bookingsChartConfig} className="h-[300px] w-full">
+              <LineChart accessibilityLayer data={analytics.monthlyData} margin={{ left: 12, right: 12 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+                <Line
+                  type="monotone"
+                  dataKey="bookings"
+                  stroke="var(--color-bookings)"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
+        {/* Most Rented Cars */}
         <Card>
           <CardHeader>
             <CardTitle>Most Rented Cars</CardTitle>
             <CardDescription>Top 5 by paid bookings</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={analytics.mostRentedCars} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
-                    {analytics.mostRentedCars.map((_, index) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartContainer config={pieConfig} className="h-[300px] mx-auto aspect-square w-full pb-0 [&_.recharts-pie-label-text]:fill-foreground">
+              <PieChart>
+                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={60}
+                  strokeWidth={5}
+                  label
+                />
+              </PieChart>
+            </ChartContainer>
           </CardContent>
         </Card>
 
+        {/* Revenue by Location */}
         <Card>
           <CardHeader>
             <CardTitle>Revenue by Location</CardTitle>
             <CardDescription>Paid bookings by car location</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.revenueByLocation} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis type="number" className="text-xs" />
-                  <YAxis type="category" dataKey="name" className="text-xs" width={90} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar dataKey="value" fill="hsl(var(--chart-3))" radius={[4, 4, 4, 4]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartContainer config={locationChartConfig} className="h-[300px] w-full">
+              <BarChart accessibilityLayer data={analytics.revenueByLocation} layout="vertical" margin={{ left: 12, right: 12 }}>
+                <CartesianGrid horizontal={false} />
+                <XAxis
+                  type="number"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => `$${value}`}
+                />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  width={90}
+                />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+                <Bar dataKey="value" fill="var(--color-value)" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
+

@@ -25,13 +25,13 @@ export async function GET(req: Request) {
     let query = supabase
       .from('users')
       .select('*', { count: 'exact' })
-      .eq('role', 'customer')
+      .in('role', ['customer', 'staff'])
       .order(sort, { ascending: order === 'asc' })
       .range(from, to);
 
     if (q) {
       query = query.or(
-        [`name.ilike.%${q}%`, `email.ilike.%${q}%`, `phone.ilike.%${q}%`, `id.ilike.%${q}%`].join(',')
+        [`name.ilike.%${q}%`, `email.ilike.%${q}%`, `phone.ilike.%${q}%`, `nic_passport.ilike.%${q}%`].join(',')
       );
     }
 
@@ -70,8 +70,10 @@ export async function GET(req: Request) {
         name: u.name || '',
         email: u.email,
         phone: u.phone,
+        nicPassport: u.nic_passport,
         createdAt: u.created_at,
         isActive: u.is_active ?? true,
+        role: u.role || 'customer',
         totalBookings: s.totalBookings,
         totalSpent: s.totalSpent,
       };

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     // Read payment (service-role) then enforce ownership.
     const { data: payment, error: pErr } = await admin
       .from('payments')
-      .select('id,user_id,booking_id,status,amount,currency')
+      .select('id,user_id,booking_id,status,amount')
       .eq('id', paymentId)
       .single();
 

@@ -7,10 +7,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { UserCheck, UserX } from "lucide-react";
+import { User, Mail, Phone, Calendar, Activity, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SimpleQueryControls } from "@/components/simple-query-controls";
 import { ClientPagination } from "@/components/client-pagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type CustomerRow = {
   userId: string;
@@ -19,6 +27,8 @@ type CustomerRow = {
   phone?: string;
   createdAt: string;
   isActive: boolean;
+  role?: string;
+  nicPassport?: string;
   totalBookings: number;
   totalSpent: number;
 };
@@ -71,17 +81,17 @@ export default function AdminCustomersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Customer Management</h1>
-        <p className="text-muted-foreground">Search and manage customer accounts (shareable URL filters)</p>
+        <h1 className="text-3xl font-bold">User Management</h1>
+        <p className="text-muted-foreground">Search and manage customer and staff accounts</p>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle>All Customers</CardTitle>
+              <CardTitle>All Users</CardTitle>
               <CardDescription>
-                {loading ? "Loading…" : `${total} customer${total !== 1 ? "s" : ""}`}
+                {loading ? "Loading…" : `${total} user${total !== 1 ? "s" : ""}`}
               </CardDescription>
             </div>
 
@@ -98,7 +108,7 @@ export default function AdminCustomersPage() {
           <div className="pt-3">
             <SimpleQueryControls
               resultsCount={total}
-              placeholder="Search customers (name, email, phone)…"
+              placeholder="Search users (name, email, phone)…"
               sortOptions={[
                 { value: "created_at:desc", label: "Newest" },
                 { value: "created_at:asc", label: "Oldest" },
@@ -114,7 +124,7 @@ export default function AdminCustomersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer</TableHead>
+                  <TableHead>User</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead>Bookings</TableHead>
@@ -127,8 +137,16 @@ export default function AdminCustomersPage() {
                 {items.map((c) => (
                   <TableRow key={c.userId}>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{c.name || "—"}</p>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{c.name || "—"}</p>
+                          {c.role === 'staff' && (
+                            <Badge variant="secondary" className="text-[10px] h-4 px-1 rounded-sm">Staff</Badge>
+                          )}
+                          {c.role === 'admin' && (
+                            <Badge variant="default" className="text-[10px] h-4 px-1 rounded-sm">Admin</Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">{c.email}</p>
                       </div>
                     </TableCell>
@@ -148,23 +166,70 @@ export default function AdminCustomersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleCustomerStatus(c.userId, c.isActive)}
-                      >
-                        {c.isActive ? (
-                          <>
-                            <UserX className="h-4 w-4 mr-2" />
-                            Disable
-                          </>
-                        ) : (
-                          <>
-                            <UserCheck className="h-4 w-4 mr-2" />
-                            Enable
-                          </>
-                        )}
-                      </Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            View 
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <DialogHeader>
+                            <DialogTitle>User Details</DialogTitle>
+                            <DialogDescription>
+                              Detailed information for {c.name || "this user"}.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="flex items-center gap-4">
+                              <div className="bg-primary/10 p-3 rounded-full text-primary">
+                                <User className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-lg leading-none">{c.name || "Unknown"}</h4>
+                                <p className="text-sm text-muted-foreground mt-1 capitalize">{c.role || "Customer"}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 text-sm mt-4">
+                              <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-2"><Mail className="h-3 w-3" /> Email</p>
+                                <p className="font-medium truncate" title={c.email}>{c.email}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-2"><Phone className="h-3 w-3" /> Phone</p>
+                                <p className="font-medium">{c.phone || "—"}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-2"><Calendar className="h-3 w-3" /> Joined</p>
+                                <p className="font-medium">{format(new Date(c.createdAt), "MMM d, yyyy")}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-2"><CreditCard className="h-3 w-3" /> NIC / Passport</p>
+                                <p className="font-medium">{c.nicPassport || "—"}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-muted-foreground flex items-center gap-2"><Activity className="h-3 w-3" /> Status</p>
+                                <div>
+                                  <Badge className={c.isActive ? "bg-success text-success-foreground hover:bg-success/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}>
+                                    {c.isActive ? "Active" : "Disabled"}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="rounded-lg border bg-card p-4 flex justify-between mt-2 shadow-sm">
+                              <div className="flex flex-col items-center">
+                                <span className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Bookings</span>
+                                <span className="font-bold text-xl">{c.totalBookings}</span>
+                              </div>
+                              <div className="flex flex-col items-center">
+                                <span className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Total Spent</span>
+                                <span className="font-bold text-xl text-primary">${Number(c.totalSpent || 0).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -172,7 +237,7 @@ export default function AdminCustomersPage() {
                 {!loading && items.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center h-24">
-                      No customers found.
+                      No users found.
                     </TableCell>
                   </TableRow>
                 ) : null}

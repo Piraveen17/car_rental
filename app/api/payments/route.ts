@@ -18,7 +18,6 @@ export async function POST(request: Request) {
       .insert({
          booking_id: body.bookingId,
          amount: body.amount,
-         currency: body.currency || 'USD',
          status: 'pending',
          method: body.method,
          user_id: user.id

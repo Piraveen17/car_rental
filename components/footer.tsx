@@ -49,7 +49,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="text-sm text-muted-foreground hover:text-primary">
+                <Link href="/contact#faq" className="text-sm text-muted-foreground hover:text-primary">
                   FAQ
                 </Link>
               </li>
@@ -60,22 +60,22 @@ export function Footer() {
             <h3 className="font-semibold mb-4">Support</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-sm text-muted-foreground hover:text-primary">
+                <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">
                   Help Center
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-muted-foreground hover:text-primary">
+                <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-muted-foreground hover:text-primary">
+                <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-muted-foreground hover:text-primary">
+                <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">
                   Cancellation Policy
                 </Link>
               </li>

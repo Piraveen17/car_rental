@@ -12,9 +12,9 @@ type NotificationItem = {
   id: string;
   type: string;
   title: string;
-  body?: string | null;
+  message?: string | null;   // DB column is "message"
   href?: string | null;
-  is_read: boolean;
+  read: boolean;             // DB column is "read"
   created_at: string;
 };
 
@@ -27,7 +27,7 @@ export function NotificationsPageClient({ initialItems }: { initialItems: Notifi
     await fetch(`/api/notifications/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ is_read: isRead }),
+      body: JSON.stringify({ read: isRead }),
     });
     router.refresh();
   }
@@ -63,11 +63,11 @@ export function NotificationsPageClient({ initialItems }: { initialItems: Notifi
           <div className="rounded-lg border p-6 text-sm text-muted-foreground">No notifications found.</div>
         ) : (
           initialItems.map((n) => (
-            <div key={n.id} className={`rounded-lg border p-4 ${n.is_read ? "bg-background" : "bg-muted/40"}`}>
+            <div key={n.id} className={`rounded-lg border p-4 ${n.read ? "bg-background" : "bg-muted/40"}`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="font-semibold">{n.title}</div>
-                  {n.body ? <div className="text-sm text-muted-foreground mt-1">{n.body}</div> : null}
+                  {n.message ? <div className="text-sm text-muted-foreground mt-1">{n.message}</div> : null}
                   {n.href ? (
                     <div className="mt-3">
                       <Link
@@ -82,7 +82,7 @@ export function NotificationsPageClient({ initialItems }: { initialItems: Notifi
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {!n.is_read ? (
+                  {!n.read ? (
                     <Button variant="outline" size="sm" onClick={() => markRead(n.id, true)}>
                       <Check className="h-4 w-4 mr-2" />
                       Mark read

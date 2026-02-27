@@ -71,3 +71,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: e?.message || "Failed to create notification" }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const supabase = await createClient();
+    const auth = await requireUser(supabase);
+    if (auth.errorResponse) return auth.errorResponse;
+
+    // Use admin client to bypass RLS for updates if needed, 
+    // or standard client if RLS allows update on own notifications.
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", auth.user.id)
+      .eq("read", false);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Failed to mark all as read" }, { status: 500 });
+  }
+}

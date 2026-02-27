@@ -208,13 +208,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Right actions */}
           <div className="flex items-center gap-2 ml-auto shrink-0">
-            <NotificationBell />
+            
             <Button variant="outline" size="sm" asChild className="flex items-center gap-1.5 px-2 sm:px-3">
               <Link href="/" rel="noopener noreferrer" aria-label="View Site">
                 <ExternalLink className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
                 <span className="hidden sm:block">View Site</span>
               </Link>
             </Button>
+            <NotificationBell />
           </div>
         </header>
 

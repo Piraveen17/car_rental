@@ -77,6 +77,16 @@ export function NotificationBell({ className }: { className?: string }) {
     setUnreadCount((c) => Math.max(0, c - 1));
   }
 
+  async function markAllRead() {
+    await fetch(`/api/notifications`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+    });
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+  }
+
   if (!isAuthenticated) return null;
 
   return (
@@ -98,9 +108,23 @@ export function NotificationBell({ className }: { className?: string }) {
         <DropdownMenuLabel className="flex items-center justify-between py-2 shrink-0">
           <span className="font-semibold">Notifications</span>
           {unreadCount > 0 && (
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-              {unreadCount} new
-            </span>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-auto py-0.5 px-2 text-xs font-normal text-muted-foreground hover:text-primary transition-colors"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  await markAllRead();
+                }}
+              >
+                <Check className="h-3 w-3 mr-1 inline" />
+                Mark all read
+              </Button>
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                {unreadCount} new
+              </span>
+            </div>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="shrink-0" />

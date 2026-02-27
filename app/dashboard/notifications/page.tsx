@@ -11,9 +11,9 @@ export default async function NotificationsPage({ searchParams }: { searchParams
     defaultPageSize: 10,
   });
 
-  const h = headers();
+  const h = await headers();
   const cookie = h.get("cookie") ?? "";
-  const base = getBaseUrlFromHeaders(headers());
+  const base = getBaseUrlFromHeaders(h);
   const url = `${base}/api/notifications?${sp.toString()}`;
   const res = await fetch(url, { cache: "no-store", headers: { cookie } });
   const json = (await res.json()) as any;

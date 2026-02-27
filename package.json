@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build --webpack",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
@@ -12,6 +12,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -116,19 +117,30 @@
       "/.next/"
     ],
     "transform": {
-      "^.+\\.tsx?$": ["ts-jest", {
-        "tsconfig": {
-          "jsx": "react-jsx",
-          "moduleResolution": "node",
-          "module": "commonjs",
-          "esModuleInterop": true,
-          "paths": {
-            "@/*": ["./*"]
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "jsx": "react-jsx",
+            "moduleResolution": "node",
+            "module": "commonjs",
+            "esModuleInterop": true,
+            "paths": {
+              "@/*": [
+                "./*"
+              ]
+            }
           }
         }
-      }]
+      ]
     },
-    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json"],
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json"
+    ],
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
       "lib/**/*.ts",

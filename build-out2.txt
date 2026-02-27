@@ -1,0 +1,92 @@
+▲ Next.js 16.1.6 (webpack)
+- Environments: .env.local, .env
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+ ✓ (pwa) Compiling for server...
+ ✓ (pwa) Compiling for server...
+ ✓ (pwa) Compiling for client (static)...
+ ○ (pwa) Service worker: C:\Users\Piraveen\Downloads\car_rental_v3_production (2)\car_rental_v3\public\sw.js
+ ○ (pwa)   URL: /sw.js
+ ○ (pwa)   Scope: /
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (131kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+✓ Compiled successfully in 91s
+  Skipping validation of types
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/47) ...
+  Generating static pages using 7 workers (11/47) 
+  Generating static pages using 7 workers (23/47) 
+  Generating static pages using 7 workers (35/47) 
+✓ Generating static pages using 7 workers (47/47) in 3.6s
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /about
+├ ○ /admin
+├ ○ /admin/analytics
+├ ƒ /admin/bookings
+├ ○ /admin/cars
+├ ○ /admin/customers
+├ ƒ /admin/maintenance
+├ ƒ /admin/users
+├ ƒ /api/analytics
+├ ƒ /api/auth/imagekit
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/profile
+├ ƒ /api/auth/refresh
+├ ƒ /api/auth/register
+├ ƒ /api/bookings
+├ ƒ /api/bookings/[id]
+├ ƒ /api/bookings/[id]/admin-cancel
+├ ƒ /api/bookings/[id]/cancel
+├ ƒ /api/bookings/[id]/invoice
+├ ƒ /api/bookings/manual
+├ ƒ /api/bookings/my-bookings
+├ ƒ /api/cars
+├ ƒ /api/cars/[id]
+├ ƒ /api/cars/[id]/availability
+├ ƒ /api/cars/[id]/reviews
+├ ƒ /api/cars/[id]/unavailable
+├ ƒ /api/cars/filters
+├ ƒ /api/customers
+├ ƒ /api/damage-reports
+├ ƒ /api/export/bookings
+├ ƒ /api/export/cars
+├ ƒ /api/export/customers
+├ ƒ /api/export/maintenance
+├ ƒ /api/maintenance
+├ ƒ /api/maintenance/[id]
+├ ƒ /api/notifications
+├ ƒ /api/notifications/[id]
+├ ƒ /api/payments
+├ ƒ /api/payments/[id]
+├ ƒ /api/payments/complete
+├ ƒ /api/reviews
+├ ƒ /api/upload/auth
+├ ƒ /api/users
+├ ƒ /api/users/[id]
+├ ƒ /api/users/[id]/role
+├ ƒ /api/users/me
+├ ƒ /auth/callback
+├ ƒ /cars
+├ ƒ /cars/[id]
+├ ○ /contact
+├ ○ /dashboard
+├ ƒ /dashboard/notifications
+├ ○ /dashboard/profile
+├ ○ /login
+├ ƒ /payment/[id]
+├ ○ /register
+├ ○ /staff
+├ ƒ /staff/bookings
+└ ○ /staff/cars
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

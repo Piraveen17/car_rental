@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   description:
     "Rent premium vehicles at competitive prices. Browse our fleet of cars and book your perfect ride today.",
   keywords: ["car rental", "vehicle rental", "rent a car", "premium cars"],
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {

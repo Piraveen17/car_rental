@@ -84,67 +84,67 @@ export function Navbar() {
 
             {isAuthenticated ? (
               <>
+                <NotificationBell />
                 <div className="hidden md:block">
-                  <NotificationBell />
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
-                      <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold">{user?.name}</p>
-                          {roleLabel && (
-                            <Badge variant="secondary" className="text-[10px] px-1 py-0">{roleLabel}</Badge>
-                          )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold">{user?.name}</p>
+                            {roleLabel && (
+                              <Badge variant="secondary" className="text-[10px] px-1 py-0">{roleLabel}</Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        My Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/profile">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Profile Settings
-                      </Link>
-                    </DropdownMenuItem>
-                    {user?.role === "admin" && (
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link href="/admin">
-                          <Shield className="mr-2 h-4 w-4" />
-                          Admin Panel
+                        <Link href="/dashboard">
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          My Dashboard
                         </Link>
                       </DropdownMenuItem>
-                    )}
-                    {user?.role === "staff" && (
                       <DropdownMenuItem asChild>
-                        <Link href="/staff">
-                          <Shield className="mr-2 h-4 w-4" />
-                          Staff Panel
+                        <Link href="/dashboard/profile">
+                          <Settings className="mr-2 h-4 w-4" />
+                          Profile Settings
                         </Link>
                       </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      {user?.role === "admin" && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin">
+                            <Shield className="mr-2 h-4 w-4" />
+                            Admin Panel
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                      {user?.role === "staff" && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/staff">
+                            <Shield className="mr-2 h-4 w-4" />
+                            Staff Panel
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sign Out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </>
             ) : (
               <div className="hidden md:flex items-center gap-2">

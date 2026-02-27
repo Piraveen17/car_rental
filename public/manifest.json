@@ -1,0 +1,16 @@
+{
+  "name": "DriveEase - Premium Car Rentals",
+  "short_name": "DriveEase",
+  "description": "Rent premium vehicles at competitive prices. Browse our fleet of cars and book your perfect ride today.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32 48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
